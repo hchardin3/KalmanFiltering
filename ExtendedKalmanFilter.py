@@ -4,7 +4,7 @@ from scipy.integrate import odeint
 class HybridExtendedKalmanFilter:
     def __init__(self, f, h, F_jacobian, H_jacobian, L, M, Q: np.ndarray, R: np.ndarray, P0: np.ndarray, x0: np.ndarray, t_span: float|int, precision: int=100):
         """
-        Initializes the Extended Kalman Filter with the provided functions and matrices.
+        Initializes the Hybrid Extended Kalman Filter with the provided functions and matrices.
         
         Parameters:
             f (callable): State transition function. Should take arguments (x, u, w, t) and return the state derivative.
@@ -33,6 +33,8 @@ class HybridExtendedKalmanFilter:
         self.t_span = t_span  # Time span for each integration step
         self.k = 0  # Current time step
         self.precision = precision  # Number of points for numerical integration
+
+        self.Kalman = None
 
         self.xdim = x0.shape[0]  # Dimension of the state vector
     
@@ -128,6 +130,105 @@ class HybridExtendedKalmanFilter:
         # Update the estimation error covariance
         I = np.eye(self.xdim)  # Identity matrix of appropriate dimension
         self.P_plus = (I - self.Kalman.dot(H)).dot(P_minus).dot((I - self.Kalman.dot(H)).T) + self.Kalman.dot(M).dot(self.R).dot(M.T).dot(self.Kalman.T)
+
+    def get_estimate(self):
+        """
+        Returns the current state estimate.
+        
+        Returns:
+            np.ndarray: The current state estimate.
+        """
+        return self.x_hat_plus
+    
+    def get_precision(self):
+        """
+        Returns the current estimation error covariance.
+        
+        Returns:
+            np.ndarray: The current estimation error covariance.
+        """
+        return self.P_plus
+
+
+class DiscreteExtendedKalmanFilter:
+    def __init__(self, f, F_jac, L, h, H_jac, M, Q: np.ndarray, R: np.ndarray, x0: np.ndarray, P0: np.ndarray):
+        """
+        Initializes the Discrete Extended Kalman Filter with the provided functions and matrices.
+        
+        Parameters:
+            f (callable): State transition function. Should take arguments (x, u, w, t) and return the state derivative.
+            F_jacobian (callable): Function to compute the Jacobian of f. Should take arguments (x, u, w, t) and return the Jacobian matrix.
+            L (callable): Function to compute df/dw at x_hat. Should take arguments (x, u, w, t) and return the matrix.
+            h (callable): Measurement function. Should take arguments (x, v, t) and return the measurement.
+            H_jacobian (callable): Function to compute the Jacobian of h. Should take arguments (x, t) and return the Jacobian matrix.
+            M (callable): Function to compute dh/dw at x_hat. Should take arguments (x, t) and return the matrix.
+            Q (np.ndarray): Process noise covariance matrix.
+            R (np.ndarray): Measurement noise covariance matrix.
+            P0 (np.ndarray): Initial estimation error covariance matrix.
+            x0 (np.ndarray): Initial state estimate vector.
+        """
+        self.f = f
+        self.F_Jac = F_jac
+        self.L = L
+        self.h = h
+        self.H_jac = H_jac
+        self.M = M
+        self.Q = Q
+        self.R = R
+        self.x_hat_plus = x0
+        self.P_plus = P0
+
+        self.xdim = self.x_hat_plus.shape[0]
+        self.k = 0
+
+        self.Kalman = None
+    
+    def update(self, u: np.ndarray, y: np.ndarray, fk = None, F_jack = None, Lk = None, hk = None, H_jack = None, Mk = None, Qk: np.ndarray = None, Rk: np.ndarray = None):
+        """
+        Updates the state estimate and covariance based on the control input and measurement.
+        
+        Parameters:
+            u (np.ndarray): Control input vector.
+            y (np.ndarray): Measurement vector.
+            fk (callable, optional): Updated state transition function. If None, use self.f.
+            F_jack (callable, optional): Updated Jacobian of the state transition function. If None, use self.F_Jac.
+            Lk (callable, optional): Updated function to compute df/dw at x_hat. If None, use self.L.
+            hk (callable, optional): Updated measurement function. If None, use self.h.
+            H_jack (callable, optional): Updated Jacobian of the measurement function. If None, use self.H_jac.
+            Mk (callable, optional): Updated function to compute dh/dw at x_hat. If None, use self.M.
+            Qk (np.ndarray, optional): Updated process noise covariance matrix. If None, use self.Q.
+            Rk (np.ndarray, optional): Updated measurement noise covariance matrix. If None, use self.R.
+        """
+        F = self.F_Jac(self.x_hat_plus, u)
+        L = self.L(self.x_hat_plus, u)
+
+        P_minus = F.dot(self.P_plus).dot(F.T) + L.dot(self.Q).dot(L.T)
+        x_hat_minus = self.f(self.x_hat_plus, u, 0)
+
+        if fk is not None:
+            self.f = fk
+        if F_jack is not None:
+            self.F_jac = F_jack
+        if Lk is not None:
+            self.L = Lk
+        if hk is not None:
+            self.h = hk
+        if H_jack is not None:
+            self.H_jac = H_jack
+        if Mk is not None:
+            self.M = Mk
+        if Qk is not None:
+            self.Q = Qk
+        if Rk is not None:
+            self.R = Rk
+        
+        H = self.H_jac(x_hat_minus)
+        M = self.M(x_hat_minus)
+
+        S = H.dot(P_minus).dot(H.T) + M.dot(self.R).dot(M.T)
+        self.Kalman = P_minus.dot(H.T).dot(np.linalg.inv(S))
+        self.x_hat_plus = x_hat_minus + self.Kalman.dot(y - self.h(x_hat_minus, 0))
+        self.P_plus = (np.eye(self.xdim) - self.Kalman.dot(H)).dot(P_minus)
 
     def get_estimate(self):
         """
