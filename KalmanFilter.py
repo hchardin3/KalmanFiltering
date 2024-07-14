@@ -21,10 +21,10 @@ class SimpleDiscreteKalmanFilter:
         self.H = H
         self.R = R
         self.P_plus = P0
-        self.x_plus = x0
+        self.x_hat_plus = x0
         self.xdim = x0.shape[0]
         self.ydim = H.shape[0]
-        self.K = np.zeros((self.xdim, self.ydim))
+        self.Kalman = None
     
     def update(self, u: np.ndarray, y: np.ndarray, Fk: np.ndarray = None, Gk: np.ndarray = None, Hk: np.ndarray = None, Qk: np.ndarray = None, Rk: np.ndarray = None):
         """
@@ -37,7 +37,7 @@ class SimpleDiscreteKalmanFilter:
         """
         # Prediction step
         P_minus = self.F.dot(self.P_plus).dot(self.F.T) + self.Q
-        x_minus = self.F.dot(self.x_plus) + self.G.dot(u)
+        x_minus = self.F.dot(self.x_hat_plus) + self.G.dot(u)
 
         # Update system matrices if provided
         if Fk is not None:
@@ -53,9 +53,9 @@ class SimpleDiscreteKalmanFilter:
         
         # Update step
         S = self.H.dot(P_minus).dot(self.H.T) + self.R
-        self.K = P_minus.dot(self.H.T).dot(np.linalg.inv(S))
-        self.x_plus = x_minus + self.K.dot(y - self.H.dot(x_minus))
-        self.P_plus = (np.eye(self.xdim) - self.K.dot(self.H)).dot(P_minus)
+        self.Kalman = P_minus.dot(self.H.T).dot(np.linalg.inv(S))
+        self.x_hat_plus = x_minus + self.Kalman.dot(y - self.H.dot(x_minus))
+        self.P_plus = (np.eye(self.xdim) - self.Kalman.dot(self.H)).dot(P_minus)
     
     def get_estimate(self) -> np.ndarray:
         """
@@ -64,7 +64,16 @@ class SimpleDiscreteKalmanFilter:
         Returns:
             np.ndarray: The current state estimate.
         """
-        return self.x_plus
+        return self.x_hat_plus
+    
+    def get_precision(self):
+        """
+        Returns the current estimation error covariance.
+        
+        Returns:
+            np.ndarray: The current estimation error covariance.
+        """
+        return self.P_plus
 
 class SimpleContinuousKalmanFilter(SimpleDiscreteKalmanFilter):
     def __init__(self, dt: float, A: np.ndarray, B: np.ndarray, Q: np.ndarray, H: np.ndarray, R: np.ndarray, P0: np.ndarray, x0: np.ndarray):
@@ -121,20 +130,20 @@ class ContinuousTimeKalmanFilter:
         self.C = C
         self.Qc = Qc
         self.Rc = Rc
-        self.P = P0
-        self.x_hat = x0
+        self.P_plus = P0
+        self.x_hat_plus = x0
 
-    def _state_derivative(self, x_hat, u, K, y):
+    def _state_derivative(self, x_hat, u, Kalman, y):
         """
         Computes the derivative of the state estimate.
         """
-        return self.A @ x_hat + self.B @ u + K @ (y - self.C @ x_hat)
+        return self.A @ x_hat + self.B @ u + Kalman @ (y - self.C @ x_hat)
 
-    def _covariance_derivative(self, P, K):
+    def _covariance_derivative(self, P, Kalman):
         """
         Computes the derivative of the error covariance matrix.
         """
-        return -K @ self.C @ P + self.A @ P + P @ self.A.T + self.Qc
+        return -Kalman @ self.C @ P + self.A @ P + P @ self.A.T + self.Qc
 
     def _runge_kutta_4(self, f, y0, dt, *args):
         """
@@ -157,13 +166,13 @@ class ContinuousTimeKalmanFilter:
         """
         # Compute the Kalman gain
         S = self.C @ self.P @ self.C.T + self.Rc
-        K = self.P @ self.C.T @ np.linalg.inv(S)
+        Kalman = self.P @ self.C.T @ np.linalg.inv(S)
         
         # Update the state estimate using RK4 integration
-        self.x_hat = self._runge_kutta_4(self._state_derivative, self.x_hat, dt, u, K, y)
+        self.x_hat_plus = self._runge_kutta_4(self._state_derivative, self.x_hat_plus, dt, u, Kalman, y)
         
         # Update the error covariance matrix using RK4 integration
-        self.P = self._runge_kutta_4(self._covariance_derivative, self.P, dt, K)
+        self.P_plus = self._runge_kutta_4(self._covariance_derivative, self.P_plus, dt, Kalman)
 
     def get_estimate(self):
         """
@@ -172,4 +181,13 @@ class ContinuousTimeKalmanFilter:
         Returns:
             np.ndarray: The current state estimate.
         """
-        return self.x_hat
+        return self.x_hat_plus
+    
+    def get_precision(self):
+        """
+        Returns the current estimation error covariance.
+        
+        Returns:
+            np.ndarray: The current estimation error covariance.
+        """
+        return self.P_plus
