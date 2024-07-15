@@ -109,10 +109,8 @@ class GaussianPDF(ProbabilityDensityFunction):
             mean = np.zeros(2)  # Default to 2D for simplicity if not specified
         if covariance_matrix is None:
             covariance_matrix = np.eye(len(mean))  # Identity matrix of dimension len(mean)
-        
-        self.mean = mean
-        self.covariance_matrix = covariance_matrix
-        self.n_dim = mean.size
+
+        n_dim = mean.size
 
         # Define the pdf function using a closure to capture mean and covariance_matrix
         def pdf(x: np.ndarray):
@@ -123,7 +121,7 @@ class GaussianPDF(ProbabilityDensityFunction):
             exponent = -0.5 * np.dot(x_m.T, np.dot(inv(covariance_matrix), x_m))
             return np.exp(exponent) / denom
 
-        super().__init__(pdf, self.n_dim, self.mean, self.covariance_matrix)
+        super().__init__(pdf, n_dim, mean, covariance_matrix)
 
 class ParticleFilter:
     def __init__(self, f, h, N_particles: int, dynamics_noise_pdf: ProbabilityDensityFunction, measurement_noise_pdf: ProbabilityDensityFunction, x0_pdf: ProbabilityDensityFunction | None = None, x0: np.ndarray = None, P0: np.ndarray = None):
@@ -168,7 +166,7 @@ class ParticleFilter:
         x_minus = np.array([self.f(x, w) for x, w in zip(self.particles, noise)])
         return x_minus
 
-    def update(self, y, regularized_resampling: bool = True):
+    def update(self, y, regularized_resampling: bool = True, fk = None, hk = None, dynamics_noise_pdf_k = None, measurement_noise_pdf_k = None):
         """
         Updates particle weights based on measurement likelihood.
 
@@ -177,6 +175,15 @@ class ParticleFilter:
             regularized_resampling (bool): Wether to use the Regularized Resampling method or not. This method is more precise but heavier. True by default.
         """
         x_minus = self.predict()
+
+        if fk is not None:
+            self.f = fk
+        if hk is not None:
+            self.h = hk
+        if dynamics_noise_pdf_k is not None:
+            self.dynamics_noise_pdf = dynamics_noise_pdf_k
+        if measurement_noise_pdf_k is not None:
+            self.measurement_noise_pdf = measurement_noise_pdf_k
 
         likelihoods = np.array([self.measurement_likelihood(x, y) for x in x_minus])
 
