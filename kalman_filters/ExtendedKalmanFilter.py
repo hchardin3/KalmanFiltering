@@ -38,7 +38,7 @@ class HybridExtendedKalmanFilter:
 
         self.xdim = x0.shape[0]  # Dimension of the state vector
     
-    def combined_derivatives(self, combined, t, u):
+    def combined_derivatives(self, combined: np.ndarray, t: float, u: np.ndarray):
         """
         Computes the derivatives of both the state estimate and the covariance.
         
@@ -203,7 +203,10 @@ class DiscreteExtendedKalmanFilter:
         F = self.F_Jac(self.x_hat_plus, u)
         L = self.L(self.x_hat_plus, u)
 
-        P_minus = F @ self.P_plus @ F.T + L @ self.Q @ L.T
+        if self.xdim == 1:
+            P_minus = self.P_plus * F @ F.T + L @ L.T * self.Q
+        else:
+            P_minus = F @ self.P_plus @ F.T + L @ self.Q @ L.T
         x_hat_minus = self.f(self.x_hat_plus, u, 0)
 
         return x_hat_minus, P_minus
@@ -245,12 +248,22 @@ class DiscreteExtendedKalmanFilter:
         
         H = self.H_jac(x_hat_minus)
         M = self.M(x_hat_minus)
-        G = M @ self.R @ M.T
 
-        S = H @ P_minus @ H.T + G
-        self.Kalman = P_minus @ H.T @ np.linalg.inv(S)
-        self.x_hat_plus = x_hat_minus + self.Kalman.dot(y - self.h(x_hat_minus, 0))
-        self.P_plus = (np.eye(self.xdim) - self.Kalman @ H) @ P_minus
+        if self.R.shape[0] == 1:
+            G = M @ M.T * self.R
+        else:
+            G = M @ self.R @ M.T
+
+        if self.xdim == 1:
+            S = P_minus * H @ H.T + G
+            self.Kalman = P_minus * H.T @ np.linalg.inv(S)
+            self.x_hat_plus = x_hat_minus + self.Kalman.dot(y - self.h(x_hat_minus, 0))
+            self.P_plus = (np.eye(self.xdim) - self.Kalman @ H) * P_minus
+        else:
+            S = H @ P_minus @ H.T + G
+            self.Kalman = P_minus @ H.T @ np.linalg.inv(S)
+            self.x_hat_plus = x_hat_minus + self.Kalman.dot(y - self.h(x_hat_minus, 0))
+            self.P_plus = (np.eye(self.xdim) - self.Kalman @ H) @ P_minus
 
     def get_estimate(self):
         """

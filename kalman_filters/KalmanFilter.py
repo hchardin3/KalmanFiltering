@@ -26,8 +26,21 @@ class SimpleDiscreteKalmanFilter:
         self.ydim = H.shape[0]
         self.Kalman = None
     
-    def predict(self, u):
-        P_minus = self.F @ self.P_plus @ self.F.T + self.Q
+    def predict(self, u: np.ndarray):
+        """
+        Predicts the new state.
+
+        Parameters:
+            u (np.ndarray): Control vector.
+        
+        Returns:
+            x_hat_minus (np.ndarray): Predicted state.
+            P_minus (np.ndarray): Predicted covariance matrix.
+        """
+        if self.xdim == 1:
+            P_minus = self.F * self.P_plus * self.F.T + self.Q
+        else:
+            P_minus = self.F @ self.P_plus @ self.F.T + self.Q
         x_hat_minus = self.F.dot(self.x_hat_plus) + self.G.dot(u)
         return x_hat_minus, P_minus
     
@@ -56,10 +69,16 @@ class SimpleDiscreteKalmanFilter:
             self.R = Rk
         
         # Update step
-        S = self.H @ P_minus @ self.H.T + self.R
-        self.Kalman = P_minus @ self.H.T @ np.linalg.inv(S)
-        self.x_hat_plus = x_hat_minus + self.Kalman.dot(y - self.H.dot(x_hat_minus))
-        self.P_plus = (np.eye(self.xdim) - self.Kalman @ self.H) @ P_minus
+        if self.xdim == 1:
+            S = P_minus * self.H  @ self.H.T + self.R
+            self.Kalman = P_minus * self.H.T @ np.linalg.inv(S)
+            self.x_hat_plus = x_hat_minus + self.Kalman.dot(y - self.H.dot(x_hat_minus))
+            self.P_plus = (np.eye(self.xdim) - self.Kalman @ self.H) * P_minus
+        else:
+            S = self.H @ P_minus @ self.H.T + self.R
+            self.Kalman = P_minus @ self.H.T @ np.linalg.inv(S)
+            self.x_hat_plus = x_hat_minus + self.Kalman.dot(y - self.H.dot(x_hat_minus))
+            self.P_plus = (np.eye(self.xdim) - self.Kalman @ self.H) @ P_minus
     
     def get_estimate(self) -> np.ndarray:
         """
