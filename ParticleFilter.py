@@ -4,17 +4,19 @@ from numpy.linalg import det, inv, slogdet, cholesky
 from scipy.stats import multivariate_normal
 
 class ProbabilityDensityFunction:
-    def __init__(self, pdf, n_dim: int = 1, mean: np.ndarray = None, covariance_matrix: np.ndarray = None) -> None:
+    def __init__(self, pdf, sampling_method: str = "default", n_dim: int = 1, mean: np.ndarray = None, covariance_matrix: np.ndarray = None) -> None:
         """
         A Probability Density Function is assumed to cover the vector space R^n_dim, and to have the regular properties of the pdf.
 
         Parameters:
             pdf (callable): A probability density function over R^n_dim. Takes a vector as an input and returns a probability. Is assumed to always be positive, and has an integral of 1.
+            sampling_method (str): Specifies the method to be used for sampling. Must be one of ["default", "gaussian"].
             n_dim (int): The dimension of the space.
             mean (np.ndarray): The mean of the distribution, if known.
             covariance_matrix (np.ndarray): The covariance matrix of the distribution, if known.
         """
         self.pdf = pdf
+        self.sampling_method = sampling_method
         self.n_dim = n_dim
         self.mean = mean
         self.covariance_matrix = covariance_matrix
@@ -32,37 +34,30 @@ class ProbabilityDensityFunction:
     def evaluate(self, x):
         return self.pdf(x)
     
-    def sample(self, n_points, space_bounds=None):
-        """
-        Sample N random points according to the probability density function.
+    def sample(self, n_points):
+        if self.sampling_method == "default":
+            return self.default_sampler(n_points)
+        elif self.sampling_method == "gaussian":
+            return self.gaussian_sampler(n_points)
         
-        Parameters:
-        n_points: int - Number of points to sample
-        space_bounds: list of tuples - Bounds for each dimension [(min1, max1), (min2, max2), ...]
-        
-        Returns:
-        samples: np.ndarray - Sampled points
-        """
-        if self.mean is not None and self.covariance_matrix is not None:
-            # If mean and covariance are provided, use multivariate normal sampling
-            mvn = multivariate_normal(mean=self.mean, cov=self.covariance_matrix)
-            samples = mvn.rvs(size=n_points)
+    def default_sampler(self, n_points):
+        if self.space_bounds is None:
+            space_bounds = [(-10**6, 10**6) for _ in range(self.n_dim)]
         else:
-            if space_bounds is None:
-                if self.space_bounds is None:
-                    space_bounds = [(-10**6, 10**6) for _ in range(self.n_dim)]
-                else:
-                    space_bounds = self.space_bounds
+            space_bounds = self.space_bounds
 
-            samples = np.zeros((n_points, self.n_dim))
-            for i in range(n_points):
-                while True:
-                    point = np.array([np.random.uniform(low, high) for low, high in space_bounds])
-                    prob = self.pdf(point)
-                    if np.random.rand() < prob:
-                        samples[i] = point
-                        break
+        samples = np.zeros((n_points, self.n_dim))
+        for i in range(n_points):
+            while True:
+                point = np.array([np.random.uniform(low, high) for low, high in space_bounds])
+                prob = self.pdf(point)
+                if np.random.rand() < prob:
+                    samples[i] = point
+                    break
         return samples
+    
+    def gaussian_sampler(self, n_points):
+        return multivariate_normal(mean=self.mean, cov=self.covariance_matrix).rvs(size=n_points)
 
     def compute_mean(self, samples):
         """
@@ -121,7 +116,7 @@ class GaussianPDF(ProbabilityDensityFunction):
             exponent = -0.5 * np.dot(x_m.T, np.dot(inv(covariance_matrix), x_m))
             return np.exp(exponent) / denom
 
-        super().__init__(pdf, n_dim, mean, covariance_matrix)
+        super().__init__(pdf, "gaussian", n_dim, mean, covariance_matrix)
     
     def change_gaussian_law(self, new_mean: np.ndarray|None = None, new_covariance_matrix: np.ndarray|None = None):
         """
