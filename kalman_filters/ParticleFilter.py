@@ -291,19 +291,23 @@ class ParticleFilter:
         """
         S = np.cov(x_minus.T)
 
-        A = cholesky(S)
-
         if self.system_size == 1:
+            A = np.sqrt(S)
             v = 2
         elif self.system_size == 2:
             v = math.pi
+            A = cholesky(S)
         else:
+            A = cholesky(S)
             v = 2 * (math.pi ** (self.system_size / 2)) / math.gamma(self.system_size / 2)
 
         h = 0.5 * ((8/v) * (self.system_size + 4) * ((2 * math.sqrt(math.pi))**self.system_size)) ** (1/(self.system_size+4)) * (self.N_particles ** (-1/(self.system_size+4)))
 
         # Compute the kernel density estimation
-        K_h = lambda x: (1 / (det(A) * h ** self.system_size)) * self.epanechnikov_kernel(inv(A) @ x / h, v)
+        if self.system_size == 1:
+            K_h = lambda x: (1 / (A * h)) * self.epanechnikov_kernel(x / (A * h), v)
+        else:
+            K_h = lambda x: (1 / (det(A) * h ** self.system_size)) * self.epanechnikov_kernel(inv(A) @ x / h, v)
 
         # Approximate the PDF p(x_k | y_k)
         p_x_given_y = np.zeros(self.N_particles)
@@ -398,7 +402,10 @@ class ExtendedParticleFilter:
         noise = self.dynamics_noise_pdf.sample(n_points=self.N_particles)
         x_minus = np.array([self.f(x, w) for x, w in zip(self.particles, noise)])
 
-        P_minus = [self.F_jac(self.particles[k]) @ self.P_plus[k] @ self.F_jac(self.particles[k]).T + self.Q for k in range(self.N_particles)]
+        if self.x_hat_plus.size == 1:
+            P_minus = [self.F_jac(self.particles[k]) * self.P_plus[k] * self.F_jac(self.particles[k]).T + self.Q for k in range(self.N_particles)]
+        else:
+            P_minus = [self.F_jac(self.particles[k]) @ self.P_plus[k] @ self.F_jac(self.particles[k]).T + self.Q for k in range(self.N_particles)]
 
         return x_minus, P_minus
     
@@ -429,7 +436,7 @@ class ExtendedParticleFilter:
         S = [H[k] @ P_minus[k] @ H[k].T + self.R for k in range(self.N_particles)]
         self.Kalman = [P_minus[k] @ H[k].T @ inv(S[k]) for k in range(self.N_particles)]
 
-        self.particles = np.array([x_minus[k] + self.Kalman[k].dot(y - self.h(self.particles[k])) for k in range(self.N_particles)])
+        self.particles = np.array([x_minus[k] + self.Kalman[k].dot(y - self.h(self.particles[k], self.measurement_noise_pdf.mean)) for k in range(self.N_particles)])
         self.P_plus = [(np.eye(self.system_size) - self.Kalman[k] @ H[k]) @ P_minus[k] for k in range(self.N_particles)]
 
         # Update weights based on measurement likelihood
@@ -511,21 +518,25 @@ class ExtendedParticleFilter:
         Parameters:
             x_minus (np.array): The raw particles that went through the dynamics function f.
         """
-        S = np.cov(self.particles.T)
-
-        A = cholesky(S)
+        S = np.cov(self.particles.T)            
 
         if self.system_size == 1:
+            A = np.sqrt(S)
             v = 2
         elif self.system_size == 2:
+            A = cholesky(S)
             v = math.pi
         else:
+            A = cholesky(S)
             v = 2 * (math.pi ** (self.system_size / 2)) / math.gamma(self.system_size / 2)
 
         h = 0.5 * ((8/v) * (self.system_size + 4) * ((2 * math.sqrt(math.pi))**self.system_size)) ** (1/(self.system_size+4)) * (self.N_particles ** (-1/(self.system_size+4)))
 
         # Compute the kernel density estimation
-        K_h = lambda x: (1 / (det(A) * h ** self.system_size)) * self.epanechnikov_kernel(inv(A) @ x / h, v)
+        if self.system_size == 1:
+            K_h = lambda x: (1 / (A * h)) * self.epanechnikov_kernel(x / (h * A), v)
+        else:
+            K_h = lambda x: (1 / (det(A) * h ** self.system_size)) * self.epanechnikov_kernel(inv(A) @ x / h, v)
 
         # Approximate the PDF p(x_k | y_k)
         p_x_given_y = np.zeros(self.N_particles)
@@ -538,8 +549,11 @@ class ExtendedParticleFilter:
         # Resample particles based on the approximated PDF
         indexes = np.random.choice(np.arange(self.N_particles), size=self.N_particles, p=p_x_given_y)
         self.particles = self.particles[indexes]
-        self.P_plus = self.P_plus[indexes]
+
+        # Convert self.P_plus to a numpy array before indexing
+        self.P_plus = np.array(self.P_plus)[indexes]
         self.weights.fill(1.0 / self.N_particles)
+
 
     def epanechnikov_kernel(self, x: np.array, v: float):
         """
