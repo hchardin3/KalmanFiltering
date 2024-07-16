@@ -186,6 +186,8 @@ class ParticleFilter:
 
         self.system_size = self.x_hat_plus.size
 
+        self.R_inv = np.linalg.inv(self.measurement_noise_pdf.covariance_matrix)
+
        
 
     def predict(self):
@@ -239,10 +241,10 @@ class ParticleFilter:
             x (np.ndarray): Particle state.
             y (np.ndarray): Measurement.
         """
-        measurement_prediction = self.h(x)
-        cov = self.measurement_noise_pdf.covariance_matrix
+        measurement_prediction = self.h(x)            
         error = y - measurement_prediction
-        return np.exp(-0.5 * error.T @ np.linalg.inv(cov) @ error) / np.sqrt(np.linalg.det(2 * np.pi * cov))
+
+        return np.exp(-0.5 * error.T @ self.R_inv @ error) / np.sqrt(np.linalg.det(2 * np.pi * self.measurement_noise_pdf.covariance_matrix))
 
     def estimate(self):
         """
@@ -254,8 +256,6 @@ class ParticleFilter:
         """
         self.x_hat_plus = np.average(self.particles, weights=self.weights, axis=0)
         self.P_plus = np.cov(self.particles.T, aweights=self.weights)
-
-        return self.x_hat_plus, self.P_plus
     
     def resample(self):
         """
@@ -281,7 +281,7 @@ class ParticleFilter:
         Parameters:
             x_minus (np.array): The raw particles that went through the dynamics function f.
         """
-        S = np.cov(x_minus)
+        S = np.cov(x_minus.T)
 
         A = cholesky(S)
 
@@ -371,6 +371,8 @@ class ExtendedParticleFilter:
         self.Q = dynamics_noise_pdf.covariance_matrix
         self.R = measurement_noise_pdf.covariance_matrix
 
+        self.R_inv = np.linalg.inv(self.R)
+
     
     def predict(self):
         """
@@ -439,9 +441,8 @@ class ExtendedParticleFilter:
             y (np.ndarray): Measurement.
         """
         measurement_prediction = self.h(x)
-        cov = self.measurement_noise_pdf.covariance_matrix
         error = y - measurement_prediction
-        return np.exp(-0.5 * error.T @ np.linalg.inv(cov) @ error) / np.sqrt(np.linalg.det(2 * np.pi * cov))
+        return np.exp(-0.5 * error.T @ self.R_inv @ error) / np.sqrt(np.linalg.det(2 * np.pi * self.R))
 
     def estimate(self):
         """
@@ -481,7 +482,7 @@ class ExtendedParticleFilter:
         Parameters:
             x_minus (np.array): The raw particles that went through the dynamics function f.
         """
-        S = np.cov(self.particles)
+        S = np.cov(self.particles.T)
 
         A = cholesky(S)
 
