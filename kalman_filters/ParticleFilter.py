@@ -183,7 +183,8 @@ class ParticleFilter:
 
         self.R_inv = np.linalg.inv(self.measurement_noise_pdf.covariance_matrix)
 
-       
+        self.privilege_precision = True
+        self.num_likelihood_samples = 10
 
     def predict(self):
         """
@@ -236,23 +237,30 @@ class ParticleFilter:
             x (np.ndarray): Particle state.
             y (np.ndarray): Measurement.
         """
-        num_samples = 10
-        noise_samples = self.measurement_noise_pdf.sample(num_samples)
-        
-        # Pre-compute the multivariate normal distribution for efficiency
-        mvn = multivariate_normal(mean=np.zeros(self.measurement_noise_pdf.n_dim), cov=self.measurement_noise_pdf.covariance_matrix)
-        
-        probabilities = []
-        
-        for v in noise_samples:
-            predicted_measurement = self.h(x, v)
+        if self.privilege_precision:
+            noise_samples = self.measurement_noise_pdf.sample(self.num_likelihood_samples)
+            
+            # Pre-compute the multivariate normal distribution for efficiency
+            mvn = multivariate_normal(mean=np.zeros(self.measurement_noise_pdf.n_dim), cov=self.measurement_noise_pdf.covariance_matrix)
+            
+            probabilities = []
+            
+            for v in noise_samples:
+                predicted_measurement = self.h(x, v)
+                error = y - predicted_measurement
+                # Evaluate the probability density function for the given error
+                prob = mvn.pdf(error)
+                probabilities.append(prob)
+            
+            # Return the average probability as the likelihood
+            return np.mean(probabilities)
+        else:
+            mvn = multivariate_normal(mean=self.measurement_noise_pdf.mean, cov=self.measurement_noise_pdf.covariance_matrix)
+            predicted_measurement = self.h(x, self.measurement_noise_pdf.mean)
             error = y - predicted_measurement
-            # Evaluate the probability density function for the given error
-            prob = mvn.pdf(error)
-            probabilities.append(prob)
-        
-        # Return the average probability as the likelihood
-        return np.mean(probabilities)
+
+            return mvn.pdf(error)
+
 
     def estimate(self):
         """
@@ -394,6 +402,9 @@ class ExtendedParticleFilter:
 
         self.R_inv = np.linalg.inv(self.R)
 
+        self.privilege_precision = True
+        self.num_likelihood_samples = 10
+
     
     def predict(self):
         """
@@ -464,23 +475,29 @@ class ExtendedParticleFilter:
             x (np.ndarray): Particle state.
             y (np.ndarray): Measurement.
         """
-        num_samples = 10
-        noise_samples = self.measurement_noise_pdf.sample(num_samples)
-        
-        # Pre-compute the multivariate normal distribution for efficiency
-        mvn = multivariate_normal(mean=np.zeros(self.measurement_noise_pdf.n_dim), cov=self.measurement_noise_pdf.covariance_matrix)
-        
-        probabilities = []
-        
-        for v in noise_samples:
-            predicted_measurement = self.h(x, v)
+        if self.privilege_precision:
+            noise_samples = self.measurement_noise_pdf.sample(self.num_likelihood_samples)
+            
+            # Pre-compute the multivariate normal distribution for efficiency
+            mvn = multivariate_normal(mean=np.zeros(self.measurement_noise_pdf.n_dim), cov=self.measurement_noise_pdf.covariance_matrix)
+            
+            probabilities = []
+            
+            for v in noise_samples:
+                predicted_measurement = self.h(x, v)
+                error = y - predicted_measurement
+                # Evaluate the probability density function for the given error
+                prob = mvn.pdf(error)
+                probabilities.append(prob)
+            
+            # Return the average probability as the likelihood
+            return np.mean(probabilities)
+        else:
+            mvn = multivariate_normal(mean=self.measurement_noise_pdf.mean, cov=self.measurement_noise_pdf.covariance_matrix)
+            predicted_measurement = self.h(x, self.measurement_noise_pdf.mean)
             error = y - predicted_measurement
-            # Evaluate the probability density function for the given error
-            prob = mvn.pdf(error)
-            probabilities.append(prob)
-        
-        # Return the average probability as the likelihood
-        return np.mean(probabilities)
+
+            return mvn.pdf(error)
 
     def estimate(self):
         """
