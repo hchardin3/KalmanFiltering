@@ -115,11 +115,13 @@ class HybridExtendedKalmanFilter:
         self.k += 1  # Increment the time step
 
         # Update the filter
-        H = self.H_jacobian(x_hat_minus)
-        M = self.M(x_hat_minus)
+        tk = self.k * self.t_span
+        H = self.H_jacobian(x_hat_minus, tk)
+        M = self.M(x_hat_minus, tk)
 
         # Compute the innovation covariance
-        S = H @ P_minus @ H.T + M @ self.R @ M.T
+        G = M @ self.R @ M.T
+        S = H @ P_minus @ H.T + G
         
         # Compute the Kalman gain
         self.Kalman = P_minus @ H.T @ np.linalg.inv(S)
@@ -129,7 +131,11 @@ class HybridExtendedKalmanFilter:
         
         # Update the estimation error covariance
         I = np.eye(self.xdim)  # Identity matrix of appropriate dimension
-        self.P_plus = (I - self.Kalman @ H) @ P_minus @ ((I - self.Kalman @ H).T) + self.Kalman @ M @ self.R @ M.T @ self.Kalman.T
+        if G.size == 1:
+            left_term = self.Kalman @ self.Kalman.T * G
+        else:
+            left_term = self.Kalman @ G @ self.Kalman.T
+        self.P_plus = (I - self.Kalman @ H) @ P_minus @ ((I - self.Kalman @ H).T) + left_term
 
     def get_estimate(self):
         """
@@ -239,8 +245,9 @@ class DiscreteExtendedKalmanFilter:
         
         H = self.H_jac(x_hat_minus)
         M = self.M(x_hat_minus)
+        G = M @ self.R @ M.T
 
-        S = H @ P_minus @ H.T + M @ self.R @ M.T
+        S = H @ P_minus @ H.T + G
         self.Kalman = P_minus @ H.T @ np.linalg.inv(S)
         self.x_hat_plus = x_hat_minus + self.Kalman.dot(y - self.h(x_hat_minus, 0))
         self.P_plus = (np.eye(self.xdim) - self.Kalman @ H) @ P_minus

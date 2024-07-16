@@ -109,7 +109,10 @@ class UnscentedKalmanFilter:
         self.x_hat_plus = x_hat_minus + self.Kalman @ (y - y_hat)
 
         # Update the covariance matrix
-        self.P_plus = P_minus - self.Kalman @ P_yy @ self.Kalman.T
+        if P_yy.size == 1:
+            self.P_plus = P_minus - self.Kalman  @ self.Kalman.T * P_yy
+        else:
+            self.P_plus = P_minus - self.Kalman @ P_yy @ self.Kalman.T
 
     def get_estimate(self):
         """
