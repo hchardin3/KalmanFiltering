@@ -67,7 +67,7 @@ class HybridExtendedKalmanFilter:
         combined_dot = np.hstack((x_hat_dot, P_dot.flatten()))
         return combined_dot
     
-    def integrate_xhat_and_P(self, u: np.ndarray):
+    def predict(self, u: np.ndarray):
         """
         Integrates the state estimate and covariance from time (k-1)+ to time k-.
         
@@ -110,7 +110,7 @@ class HybridExtendedKalmanFilter:
             self.R = Rk
 
         # First, integrate the ODE to get x_hat_minus and P_minus
-        x_hat_minus, P_minus = self.integrate_xhat_and_P(u)
+        x_hat_minus, P_minus = self.predict(u)
 
         self.k += 1  # Increment the time step
 
@@ -119,17 +119,17 @@ class HybridExtendedKalmanFilter:
         M = self.M(x_hat_minus)
 
         # Compute the innovation covariance
-        S = H.dot(P_minus).dot(H.T) + M.dot(self.R).dot(M.T)
+        S = H @ P_minus @ H.T + M @ self.R @ M.T
         
         # Compute the Kalman gain
-        self.Kalman = P_minus.dot(H.T).dot(np.linalg.inv(S))
+        self.Kalman = P_minus @ H.T @ np.linalg.inv(S)
         
         # Update the state estimate
         self.x_hat_plus = x_hat_minus + self.Kalman.dot(y - self.h(x_hat_minus, 0, self.t_span * self.k))
         
         # Update the estimation error covariance
         I = np.eye(self.xdim)  # Identity matrix of appropriate dimension
-        self.P_plus = (I - self.Kalman.dot(H)).dot(P_minus).dot((I - self.Kalman.dot(H)).T) + self.Kalman.dot(M).dot(self.R).dot(M.T).dot(self.Kalman.T)
+        self.P_plus = (I - self.Kalman @ H) @ P_minus @ ((I - self.Kalman @ H).T) + self.Kalman @ M @ self.R @ M.T @ self.Kalman.T
 
     def get_estimate(self):
         """
@@ -183,6 +183,25 @@ class DiscreteExtendedKalmanFilter:
 
         self.Kalman = None
     
+    def predict(self, u: np.ndarray):
+        """
+        Predict the next state of the dynamics based on the control vector u
+
+        Parameters:
+            u (np.ndarray): Control input vector.
+        
+        Returns:
+            x_hat_minus (np.ndarray): The state estimation vector (pre-filtering).
+            P_minus (np.ndarray): The state estimation error covariance (pre-filtering).
+        """
+        F = self.F_Jac(self.x_hat_plus, u)
+        L = self.L(self.x_hat_plus, u)
+
+        P_minus = F @ self.P_plus @ F.T + L @ self.Q @ L.T
+        x_hat_minus = self.f(self.x_hat_plus, u, 0)
+
+        return x_hat_minus, P_minus
+    
     def update(self, u: np.ndarray, y: np.ndarray, fk = None, F_jack = None, Lk = None, hk = None, H_jack = None, Mk = None, Qk: np.ndarray = None, Rk: np.ndarray = None):
         """
         Updates the state estimate and covariance based on the control input and measurement.
@@ -199,11 +218,7 @@ class DiscreteExtendedKalmanFilter:
             Qk (np.ndarray, optional): Updated process noise covariance matrix. If None, use self.Q.
             Rk (np.ndarray, optional): Updated measurement noise covariance matrix. If None, use self.R.
         """
-        F = self.F_Jac(self.x_hat_plus, u)
-        L = self.L(self.x_hat_plus, u)
-
-        P_minus = F.dot(self.P_plus).dot(F.T) + L.dot(self.Q).dot(L.T)
-        x_hat_minus = self.f(self.x_hat_plus, u, 0)
+        x_hat_minus, P_minus = self.predict(u)
 
         if fk is not None:
             self.f = fk
@@ -225,10 +240,10 @@ class DiscreteExtendedKalmanFilter:
         H = self.H_jac(x_hat_minus)
         M = self.M(x_hat_minus)
 
-        S = H.dot(P_minus).dot(H.T) + M.dot(self.R).dot(M.T)
-        self.Kalman = P_minus.dot(H.T).dot(np.linalg.inv(S))
+        S = H @ P_minus @ H.T + M @ self.R @ M.T
+        self.Kalman = P_minus @ H.T @ np.linalg.inv(S)
         self.x_hat_plus = x_hat_minus + self.Kalman.dot(y - self.h(x_hat_minus, 0))
-        self.P_plus = (np.eye(self.xdim) - self.Kalman.dot(H)).dot(P_minus)
+        self.P_plus = (np.eye(self.xdim) - self.Kalman @ H) @ P_minus
 
     def get_estimate(self):
         """

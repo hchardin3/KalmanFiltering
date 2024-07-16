@@ -26,6 +26,11 @@ class SimpleDiscreteKalmanFilter:
         self.ydim = H.shape[0]
         self.Kalman = None
     
+    def predict(self, u):
+        P_minus = self.F @ self.P_plus @ self.F.T + self.Q
+        x_hat_minus = self.F.dot(self.x_hat_plus) + self.G.dot(u)
+        return x_hat_minus, P_minus
+    
     def update(self, u: np.ndarray, y: np.ndarray, Fk: np.ndarray = None, Gk: np.ndarray = None, Hk: np.ndarray = None, Qk: np.ndarray = None, Rk: np.ndarray = None):
         """
         Updates the state estimate and covariance based on the control input and measurement.
@@ -36,8 +41,7 @@ class SimpleDiscreteKalmanFilter:
             Fk, Gk, Hk, Qk, Rk (np.ndarray): Optional updated system matrices.
         """
         # Prediction step
-        P_minus = self.F.dot(self.P_plus).dot(self.F.T) + self.Q
-        x_minus = self.F.dot(self.x_hat_plus) + self.G.dot(u)
+        x_hat_minus, P_minus = self.predict(u)
 
         # Update system matrices if provided
         if Fk is not None:
@@ -52,10 +56,10 @@ class SimpleDiscreteKalmanFilter:
             self.R = Rk
         
         # Update step
-        S = self.H.dot(P_minus).dot(self.H.T) + self.R
-        self.Kalman = P_minus.dot(self.H.T).dot(np.linalg.inv(S))
-        self.x_hat_plus = x_minus + self.Kalman.dot(y - self.H.dot(x_minus))
-        self.P_plus = (np.eye(self.xdim) - self.Kalman.dot(self.H)).dot(P_minus)
+        S = self.H @ P_minus @ self.H.T + self.R
+        self.Kalman = P_minus @ self.H.T @ np.linalg.inv(S)
+        self.x_hat_plus = x_hat_minus + self.Kalman.dot(y - self.H.dot(x_hat_minus))
+        self.P_plus = (np.eye(self.xdim) - self.Kalman @ self.H) @ P_minus
     
     def get_estimate(self) -> np.ndarray:
         """
