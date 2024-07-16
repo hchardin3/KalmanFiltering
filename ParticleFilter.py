@@ -76,7 +76,7 @@ class ProbabilityDensityFunction:
         """
         return np.mean(samples, axis=0)
     
-    def compute_covariance(self, samples):
+    def compute_covariance(self, samples: np.ndarray):
         """
         Compute the covariance matrix of the samples.
         
@@ -86,7 +86,7 @@ class ProbabilityDensityFunction:
         Returns:
         covariance_matrix: np.ndarray - Computed covariance matrix
         """
-        return np.cov(samples, rowvar=False)
+        return np.cov(samples.T, rowvar=False)
     
     def compute_space_bounds(self, bound_factor: int | float = 10):
         """
