@@ -230,16 +230,29 @@ class ParticleFilter:
 
     def measurement_likelihood(self, x, y):
         """
-        Computes the likelihood of a measurement given a particle state.
+        Computes the likelihood of a measurement given a particle state using the multivariate normal distribution.
 
         Parameters:
             x (np.ndarray): Particle state.
             y (np.ndarray): Measurement.
         """
-        measurement_prediction = self.h(x)            
-        error = y - measurement_prediction
-
-        return np.exp(-0.5 * error.T @ self.R_inv @ error) / np.sqrt(np.linalg.det(2 * np.pi * self.measurement_noise_pdf.covariance_matrix))
+        num_samples = 10
+        noise_samples = self.measurement_noise_pdf.sample(num_samples)
+        
+        # Pre-compute the multivariate normal distribution for efficiency
+        mvn = multivariate_normal(mean=np.zeros(self.measurement_noise_pdf.n_dim), cov=self.measurement_noise_pdf.covariance_matrix)
+        
+        probabilities = []
+        
+        for v in noise_samples:
+            predicted_measurement = self.h(x, v)
+            error = y - predicted_measurement
+            # Evaluate the probability density function for the given error
+            prob = mvn.pdf(error)
+            probabilities.append(prob)
+        
+        # Return the average probability as the likelihood
+        return np.mean(probabilities)
 
     def estimate(self):
         """
@@ -320,6 +333,15 @@ class ParticleFilter:
             return (1 - norm_x ** 2) * ((self.system_size + 2) / (2 * v))
         else:
             return 0.0
+    
+    def get_estimate(self):
+        """
+        Returns the current state estimate.
+        
+        Returns:
+            np.ndarray: The current state estimate.
+        """
+        return self.x_hat_plus
 
 
 class ExtendedParticleFilter:
@@ -429,15 +451,29 @@ class ExtendedParticleFilter:
     
     def measurement_likelihood(self, x, y):
         """
-        Computes the likelihood of a measurement given a particle state.
+        Computes the likelihood of a measurement given a particle state using the multivariate normal distribution.
 
         Parameters:
             x (np.ndarray): Particle state.
             y (np.ndarray): Measurement.
         """
-        measurement_prediction = self.h(x)
-        error = y - measurement_prediction
-        return np.exp(-0.5 * error.T @ self.R_inv @ error) / np.sqrt(np.linalg.det(2 * np.pi * self.R))
+        num_samples = 10
+        noise_samples = self.measurement_noise_pdf.sample(num_samples)
+        
+        # Pre-compute the multivariate normal distribution for efficiency
+        mvn = multivariate_normal(mean=np.zeros(self.measurement_noise_pdf.n_dim), cov=self.measurement_noise_pdf.covariance_matrix)
+        
+        probabilities = []
+        
+        for v in noise_samples:
+            predicted_measurement = self.h(x, v)
+            error = y - predicted_measurement
+            # Evaluate the probability density function for the given error
+            prob = mvn.pdf(error)
+            probabilities.append(prob)
+        
+        # Return the average probability as the likelihood
+        return np.mean(probabilities)
 
     def estimate(self):
         """
@@ -447,10 +483,8 @@ class ExtendedParticleFilter:
             np.ndarray: Mean state estimate.
             np.ndarray: Covariance of the estimate.
         """
-        mean = np.average(self.particles, weights=self.weights, axis=0)
-        covariance = np.cov(self.particles.T, aweights=self.weights)
-        self.x_hat_plus = mean
-        self.P_plus_0 = covariance
+        self.x_hat_plus = np.average(self.particles, weights=self.weights, axis=0)
+        self.P_plus_0 = np.cov(self.particles.T, aweights=self.weights)
 
     def resample(self):
         """
@@ -523,3 +557,12 @@ class ExtendedParticleFilter:
             return (1 - norm_x ** 2) * ((self.system_size + 2) / (2 * v))
         else:
             return 0.0
+    
+    def get_estimate(self):
+        """
+        Returns the current state estimate.
+        
+        Returns:
+            np.ndarray: The current state estimate.
+        """
+        return self.x_hat_plus
