@@ -1,5 +1,5 @@
 import numpy as np
-from kalman_filters.extended_kalman_filters import DiscreteExtendedKalmanFilter
+from filters.extended_kalman_filters import DiscreteExtendedKalmanFilter
 
 # State transition function
 def f(x, u, w=0, dt=1):
