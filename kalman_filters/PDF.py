@@ -1,3 +1,7 @@
+"""
+This script is used to define Probability Density Functions (PDFs) as Python objects.
+"""
+
 import numpy as np
 import math
 from numpy.linalg import det, inv, slogdet, cholesky

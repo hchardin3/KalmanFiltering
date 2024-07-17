@@ -1,8 +1,12 @@
+"""
+Define the basic kalman filters, for either discrete, discretized or continuous systems.
+"""
+
 import numpy as np
 from scipy.linalg import expm, inv, solve_continuous_are
 
-class SimpleDiscreteKalmanFilter:
-    def __init__(self, F: np.ndarray, G: np.ndarray, Q: np.ndarray, H: np.ndarray, R: np.ndarray, P0: np.ndarray, x0: np.ndarray):
+class KalmanFilter:
+    def __init__(self, F: np.ndarray, G: np.ndarray, Q: np.ndarray, H: np.ndarray, R: np.ndarray, x0: np.ndarray, P0: np.ndarray):
         """
         Initializes the Kalman Filter with the provided matrices.
         
@@ -98,8 +102,8 @@ class SimpleDiscreteKalmanFilter:
         """
         return self.P_plus
 
-class SimpleContinuousKalmanFilter(SimpleDiscreteKalmanFilter):
-    def __init__(self, dt: float, A: np.ndarray, B: np.ndarray, Q: np.ndarray, H: np.ndarray, R: np.ndarray, P0: np.ndarray, x0: np.ndarray):
+class DiscretizedKalmanFilter(KalmanFilter):
+    def __init__(self, dt: float, A: np.ndarray, B: np.ndarray, Q: np.ndarray, H: np.ndarray, R: np.ndarray, x0: np.ndarray, P0: np.ndarray):
         """
         Initializes the continuous-to-discrete Kalman Filter with the provided matrices and sampling time.
         
@@ -132,7 +136,7 @@ class SimpleContinuousKalmanFilter(SimpleDiscreteKalmanFilter):
             # Extract G from the result
             G = exp_augmented[:n, n:]
 
-        super().__init__(F, G, Q, H, R, P0, x0)
+        super().__init__(F, G, Q, H, R, x0, P0)
 
 class ContinuousTimeKalmanFilter:
     def __init__(self, A, B, C, Qc, Rc, P0, x0):

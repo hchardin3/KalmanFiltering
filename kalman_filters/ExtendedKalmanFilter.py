@@ -1,8 +1,14 @@
+"""
+This script defines two types of filters:
+    HybridExtendedKalmanFilter: An extended kalman filter that works for systems with continuous dynamics and discrete measurements at a regular time.
+    DiscreteExtendedKalmanFilter: An extended kalman filter that works for systems with discrete dynamics and discrete measurements.
+"""
+
 import numpy as np
 from scipy.integrate import odeint
 
 class HybridExtendedKalmanFilter:
-    def __init__(self, f, h, F_jacobian, H_jacobian, L, M, Q: np.ndarray, R: np.ndarray, P0: np.ndarray, x0: np.ndarray, t_span: float|int, precision: int=100):
+    def __init__(self, f, h, F_jacobian, H_jacobian, L, M, Q: np.ndarray, R: np.ndarray, x0: np.ndarray, P0: np.ndarray, t_span: float|int, precision: int=100):
         """
         Initializes the Hybrid Extended Kalman Filter with the provided functions and matrices.
         

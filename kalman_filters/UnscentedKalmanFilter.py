@@ -1,8 +1,12 @@
+"""
+The unscented kalman filter.
+"""
+
 import numpy as np
 from scipy.linalg import cholesky
 
 class UnscentedKalmanFilter:
-    def __init__(self, f, h, Q: np.ndarray, R: np.ndarray, P0: np.ndarray, x0: np.ndarray, kappa: float = 0.):
+    def __init__(self, f, h, Q: np.ndarray, R: np.ndarray, x0: np.ndarray, P0: np.ndarray, kappa: float = 0.):
         """
         Initializes the Unscented Kalman Filter with the provided functions and matrices.
 

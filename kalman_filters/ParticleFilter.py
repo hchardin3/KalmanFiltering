@@ -1,3 +1,9 @@
+"""
+This script defines two types of filters:
+    ParticleFilter: The classic particle filter.
+    ExtendedParticleFilter: A particle filter that uses equations of extended kalman filter in its equations.
+"""
+
 import numpy as np
 import math
 from numpy.linalg import det, inv, slogdet, cholesky
