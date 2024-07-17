@@ -8,22 +8,21 @@ from scipy.linalg import expm, inv
 class KalmanFilter:
     def __init__(self, F: np.ndarray, G: np.ndarray, Q: np.ndarray, H: np.ndarray, R: np.ndarray, x0: np.ndarray, P0: np.ndarray):
         """
-        The basic Kalman Filter works for systems with discrete dynamics (hence called state transitions) and measurement.
+        Initializes a basic Kalman Filter, designed for discrete-time linear systems. This filter predicts and updates
+        the state of a system using linear state transition and measurement models along with Gaussian noise.
 
-        The state transition of the system is assumed to go by the following equations:
-            x(k+1) = F(k) * x(k) + G(k) * u(k) + w(k) where w(k) follows a gaussian law of mean 0 and variance Q(k).
-            y(k) = H(k) x(k) + v(k) where v(k) follows a gaussian law of mean 0 and variance R(k).
-
-        The Kalman Filter is initialized with the provided matrices.
-        
         Parameters:
-            F (np.ndarray): State transition matrix.
-            G (np.ndarray): Control input matrix.
-            Q (np.ndarray): Process noise covariance.
-            H (np.ndarray): Observation matrix.
-            R (np.ndarray): Measurement noise covariance.
-            x0 (np.ndarray): Initial state estimate.
-            P0 (np.ndarray): Initial estimation error covariance.        
+            F (np.ndarray): The state transition matrix.
+            G (np.ndarray): The control input matrix.
+            Q (np.ndarray): The process noise covariance matrix.
+            H (np.ndarray): The observation matrix.
+            R (np.ndarray): The measurement noise covariance matrix.
+            x0 (np.ndarray): The initial state estimate.
+            P0 (np.ndarray): The initial estimation error covariance matrix.
+
+        The state evolution and measurement update equations are:
+            x(k+1) = F(k) * x(k) + G(k) * u(k) + w(k) where w(k) ~ N(0, Q(k))
+            y(k) = H(k) * x(k) + v(k) where v(k) ~ N(0, R(k))
         """
         self.F = F
         self.G = G
@@ -111,28 +110,22 @@ class KalmanFilter:
 class DiscretizedKalmanFilter(KalmanFilter):
     def __init__(self, dt: float, A: np.ndarray, B: np.ndarray, Q: np.ndarray, H: np.ndarray, R: np.ndarray, x0: np.ndarray, P0: np.ndarray):
         """
-        The goal of this filter is to discretize a system with continuous dynamics and discrete measurements every t seconds.
+        Initializes a Discretized Kalman Filter for systems with continuous linear dynamics and discrete linear measurements. This filter
+        discretizes continuous system dynamics into discrete time steps to be used with the standard Kalman Filter equations.
 
-        Consider the following system:
-            x'(t) = A * x(t) + B * u(t) + w(t), where w is a gaussian noise of mean 0 and variance Q.
-            y(tk) = H * x(tk) + v(tk), where v is a gaussian noise of mean 0 and variance R.
-        
-        The dynamics can then be discretized into a state transition as follow:
-            x(t(k+1)) = F * x(tk) + G * u(tk) + w(tk), where:
-                F = exp(A * delta_t), with delta_t the sampling time
-                G = integral(0, delta_t)(exp(A * tau) dtau) * B
-
-        Hence, to initialize this filter, you need to provide it with the continuous system parameters and a sampling time. 
-        
         Parameters:
-            dt (float): Sampling time.
-            A (np.ndarray): Continuous-time state transition matrix.
-            B (np.ndarray): Continuous-time control input matrix.
-            Q (np.ndarray): Process noise covariance.
-            H (np.ndarray): Observation matrix.
-            R (np.ndarray): Measurement noise covariance.
-            x0 (np.ndarray): Initial state estimate.
-            P0 (np.ndarray): Initial estimation error covariance.
+            dt (float): The sampling time interval.
+            A (np.ndarray): The continuous-time state transition matrix.
+            B (np.ndarray): The continuous-time control input matrix.
+            Q (np.ndarray): The process noise covariance matrix.
+            H (np.ndarray): The observation matrix.
+            R (np.ndarray): The measurement noise covariance matrix.
+            x0 (np.ndarray): The initial state estimate.
+            P0 (np.ndarray): The initial estimation error covariance matrix.
+
+        The system dynamics are transformed from continuous to discrete using:
+            F = exp(A * dt), where F represents the state transition matrix over the interval dt.
+            G = ∫[0, dt] exp(A * τ) dτ * B, approximating the impact of the control input over the interval.
         """
         
         F = expm(A * dt)
