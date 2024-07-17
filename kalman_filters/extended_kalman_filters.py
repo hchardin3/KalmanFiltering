@@ -21,8 +21,8 @@ class HybridExtendedKalmanFilter:
             M (callable): Function to compute dh/dw at x_hat. Should take arguments (x, t) and return the matrix.
             Q (np.ndarray): Process noise covariance matrix.
             R (np.ndarray): Measurement noise covariance matrix.
-            P0 (np.ndarray): Initial estimation error covariance matrix.
             x0 (np.ndarray): Initial state estimate vector.
+            P0 (np.ndarray): Initial estimation error covariance matrix.
             t_span (float|int): Time span for each integration step.
             precision (int): Number of points to use for the numerical integration. The bigger it is, the more precise the filter will be, but computations will be heavier.
         """
@@ -176,8 +176,8 @@ class DiscreteExtendedKalmanFilter:
             M (callable): Function to compute dh/dw at x_hat. Should take arguments (x, t) and return the matrix.
             Q (np.ndarray): Process noise covariance matrix.
             R (np.ndarray): Measurement noise covariance matrix.
-            P0 (np.ndarray): Initial estimation error covariance matrix.
             x0 (np.ndarray): Initial state estimate vector.
+            P0 (np.ndarray): Initial estimation error covariance matrix.
         """
         self.f = f
         self.F_Jac = F_jac

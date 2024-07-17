@@ -4,7 +4,6 @@ This script is used to define Probability Density Functions (PDFs) as Python obj
 
 import numpy as np
 import math
-from numpy.linalg import det, inv, slogdet, cholesky
 from scipy.stats import multivariate_normal
 from scipy.integrate import nquad
 

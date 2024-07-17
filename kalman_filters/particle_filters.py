@@ -6,10 +6,9 @@ This script defines two types of filters:
 
 import numpy as np
 import math
-from numpy.linalg import det, inv, slogdet, cholesky
+from numpy.linalg import det, inv, cholesky
 from scipy.stats import multivariate_normal
-from scipy.integrate import nquad
-from kalman_filters.PDF import ProbabilityDensityFunction, MultivariateGaussianPDF, UnivariateGaussianPDF
+from stats.probability_density import ProbabilityDensityFunction, MultivariateGaussianPDF, UnivariateGaussianPDF
 
 class ParticleFilter:
     def __init__(self, f, h, N_particles: int, dynamics_noise_pdf: ProbabilityDensityFunction, measurement_noise_pdf: ProbabilityDensityFunction, x0_pdf: ProbabilityDensityFunction | None = None, x0: np.ndarray | None = None, P0: np.ndarray | None = None):

@@ -15,8 +15,8 @@ class UnscentedKalmanFilter:
             h (callable): Measurement function. Should take arguments (x, t) and return the measurement.
             Q (np.ndarray): Process noise covariance matrix.
             R (np.ndarray): Measurement noise covariance matrix.
-            P0 (np.ndarray): Initial estimation error covariance matrix.
             x0 (np.ndarray): Initial state estimate vector.
+            P0 (np.ndarray): Initial estimation error covariance matrix.
             kappa (float): Scaling parameter for the sigma points.
         """
         self.f = f

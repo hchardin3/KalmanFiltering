@@ -1,4 +1,4 @@
-from kalman_filters.ExtendedKalmanFilter import HybridExtendedKalmanFilter, DiscreteExtendedKalmanFilter
+from kalman_filters.extended_kalman_filters import HybridExtendedKalmanFilter, DiscreteExtendedKalmanFilter
 
 import numpy as np
 from scipy.integrate import odeint

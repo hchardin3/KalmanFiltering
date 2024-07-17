@@ -1,5 +1,5 @@
-from kalman_filters.ParticleFilter import ParticleFilter
-from kalman_filters.PDF import MultivariateGaussianPDF, UnivariateGaussianPDF, MultivariateUniformPDF
+from kalman_filters.particle_filters import ParticleFilter
+from stats.probability_density import MultivariateGaussianPDF, UnivariateGaussianPDF, MultivariateUniformPDF
 import numpy as np
 
 # Define the state transition and measurement functions

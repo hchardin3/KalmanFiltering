@@ -1,7 +1,7 @@
 import numpy as np
 import math
-from kalman_filters.ParticleFilter import ExtendedParticleFilter
-from kalman_filters.PDF import MultivariateGaussianPDF, UnivariateGaussianPDF, MultivariateUniformPDF, UnivariateUniformPDF
+from kalman_filters.particle_filters import ExtendedParticleFilter
+from stats.probability_density import MultivariateGaussianPDF, UnivariateGaussianPDF, MultivariateUniformPDF, UnivariateUniformPDF
 
 def state_transition(x, w):
     return x * math.cos(x) + w

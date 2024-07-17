@@ -1,4 +1,4 @@
-from kalman_filters.UnscentedKalmanFilter import UnscentedKalmanFilter
+from kalman_filters.unscented_kalman_filter import UnscentedKalmanFilter
 import numpy as np
 import matplotlib.pyplot as plt
 

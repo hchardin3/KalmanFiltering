@@ -3,7 +3,7 @@ Define the basic kalman filters, for either discrete, discretized or continuous 
 """
 
 import numpy as np
-from scipy.linalg import expm, inv, solve_continuous_are
+from scipy.linalg import expm, inv
 
 class KalmanFilter:
     def __init__(self, F: np.ndarray, G: np.ndarray, Q: np.ndarray, H: np.ndarray, R: np.ndarray, x0: np.ndarray, P0: np.ndarray):
@@ -16,8 +16,8 @@ class KalmanFilter:
             Q (np.ndarray): Process noise covariance.
             H (np.ndarray): Observation matrix.
             R (np.ndarray): Measurement noise covariance.
-            P0 (np.ndarray): Initial estimation error covariance.
             x0 (np.ndarray): Initial state estimate.
+            P0 (np.ndarray): Initial estimation error covariance.
         """
         self.F = F
         self.G = G
@@ -114,8 +114,8 @@ class DiscretizedKalmanFilter(KalmanFilter):
             Q (np.ndarray): Process noise covariance.
             H (np.ndarray): Observation matrix.
             R (np.ndarray): Measurement noise covariance.
-            P0 (np.ndarray): Initial estimation error covariance.
             x0 (np.ndarray): Initial state estimate.
+            P0 (np.ndarray): Initial estimation error covariance.
         """
         
         F = expm(A * dt)
