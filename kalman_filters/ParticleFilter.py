@@ -1,7 +1,7 @@
 """
 This script defines two types of filters:
     ParticleFilter: The classic particle filter.
-    ExtendedParticleFilter: A particle filter that uses equations of extended kalman filter in its equations.
+    ExtendedParticleFilter: A particle filter that uses equations of extended kalman filter in its update.
 """
 
 import numpy as np
@@ -9,7 +9,7 @@ import math
 from numpy.linalg import det, inv, slogdet, cholesky
 from scipy.stats import multivariate_normal
 from scipy.integrate import nquad
-from PDF import ProbabilityDensityFunction, MultivariateGaussianPDF
+from kalman_filters.PDF import ProbabilityDensityFunction, MultivariateGaussianPDF, UnivariateGaussianPDF
 
 class ParticleFilter:
     def __init__(self, f, h, N_particles: int, dynamics_noise_pdf: ProbabilityDensityFunction, measurement_noise_pdf: ProbabilityDensityFunction, x0_pdf: ProbabilityDensityFunction | None = None, x0: np.ndarray | None = None, P0: np.ndarray | None = None):
@@ -36,7 +36,10 @@ class ParticleFilter:
         self.measurement_noise_pdf = measurement_noise_pdf
 
         if x0_pdf is None:
-            self.x0_pdf = MultivariateGaussianPDF(x0, P0)
+            if x0.size == 1:
+                self.x0_pdf = UnivariateGaussianPDF(x0, P0)
+            else:
+                self.x0_pdf = MultivariateGaussianPDF(x0, P0)
         else:
             self.x0_pdf = x0_pdf
 
@@ -316,11 +319,17 @@ class ExtendedParticleFilter:
 
         H = [self.H_jac(self.particles[k]) for k in range(self.N_particles)]
         S = [H[k] @ P_minus[k] @ H[k].T + self.R for k in range(self.N_particles)]
-        self.Kalman = [P_minus[k] @ H[k].T @ inv(S[k]) for k in range(self.N_particles)]
 
-        self.particles = np.array([x_minus[k] + self.Kalman[k].dot(y - self.h(self.particles[k], self.measurement_noise_pdf.mean)) for k in range(self.N_particles)])
+        if self.R.shape[0] == 1:            
+            self.Kalman = [(P_minus[k] @ H[k].T * inv(S[k])).reshape(self.system_size) for k in range(self.N_particles)]
+            self.particles = np.array([x_minus[k] + (self.Kalman[k].T * (y - self.h(self.particles[k], self.measurement_noise_pdf.mean))) for k in range(self.N_particles)])
+        else:
+            self.Kalman = [P_minus[k] @ H[k].T @ inv(S[k]) for k in range(self.N_particles)]
+            self.particles = np.array([x_minus[k] + (self.Kalman[k].dot(y - self.h(self.particles[k], self.measurement_noise_pdf.mean))) for k in range(self.N_particles)])
+        
+        
         self.P_plus = [(np.eye(self.system_size) - self.Kalman[k] @ H[k]) @ P_minus[k] for k in range(self.N_particles)]
-
+         
         # Update weights based on measurement likelihood
         likelihoods = np.array([self.measurement_likelihood(x, y) for x in self.particles])
 

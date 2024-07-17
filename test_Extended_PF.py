@@ -1,31 +1,31 @@
 import numpy as np
-from kalman_filters.ParticleFilter import ExtendedParticleFilter, GaussianPDF
+import math
+from kalman_filters.ParticleFilter import ExtendedParticleFilter
+from kalman_filters.PDF import MultivariateGaussianPDF, UnivariateGaussianPDF, MultivariateUniformPDF, UnivariateUniformPDF
 
 def state_transition(x, w):
-    return x + w
+    return x * math.cos(x) + w
 
 def state_transition_jacobian(x):
-    return np.array([[1]])
+    return np.array([[np.cos(x) - x * np.sin(x)]])
 
 def measurement_function(x, v):
-    return x + v
+    return x**2 + v
 
 def measurement_jacobian(x):
-    return np.array([[1]])
+    return np.array([[2 * x]])
 
 # Noise settings
-process_noise_std = 0.1
-measurement_noise_std = 0.1
+process_noise_std = 0.01
+measurement_noise_std = 0.01
 
 # Probability density functions for noise
-dynamics_noise_pdf = GaussianPDF(mean=np.zeros(1), covariance_matrix=np.array([[process_noise_std ** 2]]))
-measurement_noise_pdf = GaussianPDF(mean=np.zeros(1), covariance_matrix=np.array([[measurement_noise_std ** 2]]))
-
-# Initial state PDF
-initial_state_pdf = GaussianPDF(mean=np.array([0]), covariance_matrix=np.array([[1]]))
+dynamics_noise_pdf = UnivariateUniformPDF(lower_bound=-process_noise_std, upper_bound=process_noise_std)
+measurement_noise_pdf = UnivariateGaussianPDF(mean=0, covariance=measurement_noise_std**2)
+initial_state_pdf = UnivariateGaussianPDF(mean=1, covariance=0.1)
 
 # Number of particles
-N_particles = 1000
+N_particles = 10
 
 # Create the filter
 epf = ExtendedParticleFilter(
@@ -40,29 +40,34 @@ epf = ExtendedParticleFilter(
 )
 
 # Simulate some data
-true_state = 0
-num_steps = 20
-true_states = []
+true_state = np.ones(1)
+num_steps = 100
+true_states = [true_state]
+positions = [true_state[0]]
 measurements = []
-for i in range(num_steps):
+estimates = [true_state]
+for i in range(1, num_steps):
     print(i)
-    true_state += np.random.normal(0, process_noise_std)
+    
+    true_state = state_transition(true_states[i-1], dynamics_noise_pdf.sample(1))
     true_states.append(true_state)
-    measurement = true_state + np.random.normal(0, measurement_noise_std)
+    positions.append(true_state[0])
+    measurement = measurement_function(true_state, measurement_noise_pdf.sample(1))
     measurements.append(measurement)
-
-# Run the particle filter
-estimates = []
-for measurement in measurements:
+    # print(type(measurement), measurement, measurement.shape)
     epf.update(measurement)
     estimates.append(epf.get_estimate())
+    # print(estimates[i], true_state)
 
 # Plot the results
 import matplotlib.pyplot as plt
 plt.figure(figsize=(10, 5))
-plt.plot(true_states, label='True State')
-plt.plot(estimates, label='Estimated State')
+states_plot = [true_state[0] for true_state in true_states]
+plt.plot(states_plot, label='True State')
+estimates_plot = [estimate[0] for estimate in estimates]
+plt.plot(estimates_plot, label='Estimated State')
 plt.xlabel('Time Step')
 plt.ylabel('State')
 plt.legend()
+plt.grid()
 plt.show()

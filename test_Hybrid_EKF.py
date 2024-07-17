@@ -41,7 +41,7 @@ R_vehicle = np.array([[1]])  # Measurement noise covariance
 
 # Create filter instance
 vehicle_filter = HybridExtendedKalmanFilter(f=f_vehicle, h=h_vehicle, F_jacobian=F_jac_vehicle, H_jacobian=H_jac_vehicle,
-                                            L=L_vehicle, M=M_vehicle, Q=Q_vehicle, R=R_vehicle, P0=P0_vehicle, x0=x0_vehicle, t_span=1)
+                                            L=L_vehicle, M=M_vehicle, Q=Q_vehicle, R=R_vehicle, x0=x0_vehicle,   P0=P0_vehicle, t_span=1)
 
 # Simulation parameters
 t_final = 50

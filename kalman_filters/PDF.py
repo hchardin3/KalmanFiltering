@@ -79,16 +79,24 @@ class ProbabilityDensityFunction:
             space_bounds = [(-10**6, 10**6) for _ in range(self.n_dim)]
         else:
             space_bounds = self.space_bounds
-
-        samples = np.zeros((n_points, self.n_dim))
-        for i in range(n_points):
+        
+        if n_points > 1:
+            samples = np.zeros((n_points, self.n_dim))
+            for i in range(n_points):
+                while True:
+                    point = np.array([np.random.uniform(low, high) for low, high in space_bounds])
+                    prob = self.pdf(point)
+                    if np.random.rand() < prob:
+                        samples[i] = point
+                        break
+            return samples
+        else:
             while True:
-                point = np.array([np.random.uniform(low, high) for low, high in space_bounds])
-                prob = self.pdf(point)
-                if np.random.rand() < prob:
-                    samples[i] = point
-                    break
-        return samples
+                    point = np.array([np.random.uniform(low, high) for low, high in space_bounds])
+                    prob = self.pdf(point)
+                    if np.random.rand() < prob:
+                        return point
+
     
     def gaussian_sampler(self, n_points):
         return multivariate_normal(mean=self.mean, cov=self.covariance_matrix).rvs(size=n_points)
@@ -201,12 +209,53 @@ class ProbabilityDensityFunction:
                 bounds.append((lower_bound, upper_bound))
             return bounds
 
+class UnivariateGaussianPDF(ProbabilityDensityFunction):
+    def __init__(self, mean: float|int = 0, covariance: float|int|None = None) -> None:
+        """
+        Creates a univariate gaussian distribution based on the provided mean and covariance.
+
+        Parameters:
+            mean (float or int): The mean of the gaussian distribution.
+            covariance_matrix(np.ndarray): The covariance of the gaussian distribution. By default equal to 1.
+        """
+        
+        if covariance is None:
+            covariance = 1
+
+        # Define the pdf function using scipy's multivariate normal distribution
+        scipy_mv_gaussian = multivariate_normal(mean=mean, cov=covariance)
+
+        def pdf(x):
+            return scipy_mv_gaussian.pdf(x)
+        
+        scaling_factor = math.sqrt(covariance)
+        
+        bounds = [(mean - 100 * scaling_factor, mean + 100 * scaling_factor)]
+
+        super().__init__(pdf, 1, pdf_bounds=bounds, sampling_method="gaussian", mean=np.array(mean), covariance_matrix=np.diag([covariance]))
+
 class MultivariateGaussianPDF(ProbabilityDensityFunction):
-    def __init__(self, mean: np.ndarray|None = None, covariance_matrix: np.ndarray|None = None) -> None:
-        if mean is None:
-            mean = np.zeros(2)  # Default to 2D for simplicity if not specified
+    def __init__(self, mean: np.ndarray = np.zeros(2), covariance_matrix: np.ndarray|None = None) -> None:
+        """
+        Creates a multivariate gaussian distribution based on the provided mean and covariance.
+
+        Parameters:
+            mean (np.ndarray): The mean of the gaussian distribution.
+            covariance_matrix(np.ndarray): The covariance of the gaussian distribution. By default equal to np.eye(mean.size)
+        """
+        if len(mean.shape) != 1:
+            raise(ValueError("mean should be a vector"))
+        elif mean.size == 1:
+            raise(ValueError("Please use UnivariateGaussianPDF for gaussian distribution laws on R"))
+        
         if covariance_matrix is None:
-            covariance_matrix = np.eye(len(mean))  # Identity matrix of dimension len(mean)
+            covariance_matrix = np.eye(mean.size)
+        else:
+            if len(covariance_matrix.shape) != 2 or covariance_matrix.shape[0] != covariance_matrix.shape[1]:
+                raise(ValueError("covariance_matrix must be a square matrix"))
+            
+            if covariance_matrix.shape[0] != mean.size:
+                raise(ValueError("covariance_matrix size should be equal to mean length"))
 
         n_dim = mean.size
 
@@ -215,33 +264,36 @@ class MultivariateGaussianPDF(ProbabilityDensityFunction):
 
         def pdf(x: np.ndarray):
             return scipy_mv_gaussian.pdf(x)
+        
+        scaling_factor = np.sqrt(mean.size * np.linalg.norm(covariance_matrix))
+        
+        bounds = [(mean[i] - 100 * scaling_factor, mean[i] + 100 * scaling_factor) for i in range(mean.size)]
 
-        super().__init__(pdf, n_dim, sampling_method="gaussian", mean=mean, covariance_matrix=covariance_matrix)
-    
-    def change_gaussian_law(self, new_mean: np.ndarray|None = None, new_covariance_matrix: np.ndarray|None = None):
+        super().__init__(pdf, n_dim, pdf_bounds=bounds, sampling_method="gaussian", mean=mean, covariance_matrix=covariance_matrix)
+
+class UnivariateUniformPDF(ProbabilityDensityFunction):
+    def __init__(self, lower_bound: int|float, upper_bound: int|float) -> None:
         """
-        Allow to update the gaussian law of this PDF by simply providing new mean vector and covariance matrix.
+        Creates a Uniform Probability Distribution over the specified bounds.
 
         Parameters:
-            new_mean (np.ndarray): The new mean vector.
-            new_covariance_matrix (np.ndarray): The new covariance matrix.
+            lower_bound (int or float): The lower bound of the uniform distribution.
+            upper_bound (int or float): The upper bound of the uniform distribution.
         """
-        if new_mean is not None or new_covariance_matrix is not None:
-            if new_mean is not None and new_mean.size == self.n_dim:
-                self.mean = new_mean
-            
-            if new_covariance_matrix is not None and new_covariance_matrix.shape[0] == self.n_dim:
-                self.covariance_matrix = new_covariance_matrix
-            
-            def new_pdf(x: np.ndarray):
-                # Calculate the normalizing constant
-                denom = np.sqrt((2 * np.pi) ** self.n_dim * det(self.covariance_matrix))
-                # Calculate the exponent term
-                x_m = x - self.mean
-                exponent = -0.5 * np.dot(x_m.T, np.dot(inv(self.covariance_matrix), x_m))
-                return np.exp(exponent) / denom
-            
-            self.pdf = new_pdf
+        if upper_bound <= lower_bound:
+            raise(ValueError("Please specify valid bounds"))
+        
+        volume = upper_bound - lower_bound
+        mean = (lower_bound + upper_bound) / 2
+        covariance_matrix = (upper_bound - lower_bound)**2 / 12
+
+        def pdf(x: float):
+            in_bounds = (x >= lower_bound and x <= upper_bound)
+            return 1 / volume if in_bounds else 0.0
+        
+        bounds = [(lower_bound, upper_bound)]
+
+        super().__init__(pdf, 1, pdf_bounds=bounds, mean=np.array(mean), covariance_matrix=np.diag([covariance_matrix]))
 
 class MultivariateUniformPDF(ProbabilityDensityFunction):
     def __init__(self, bounds: list[tuple[float, float]]) -> None:
@@ -252,6 +304,10 @@ class MultivariateUniformPDF(ProbabilityDensityFunction):
             bounds (list of tuples of shape [lim1, lim2] with lim2 > lim1): The bounds of the uniform pdf for each dimension.
         """
         n_dim = len(bounds)
+
+        if n_dim == 1:
+            raise(ValueError("Please use UnivariateUniformPDF for uniform pdfs of size 1"))
+
         volume = np.prod([bound[1] - bound[0] for bound in bounds])
         mean = np.array([(bound[0] + bound[1]) / 2 for bound in bounds])
         covariance_matrix = np.diag([(bound[1] - bound[0])**2 / 12 for bound in bounds])
@@ -279,9 +335,9 @@ class MultivariateExponentialPDF(ProbabilityDensityFunction):
                 return 0.0
             return np.prod([(1/scale) * np.exp(-x[i]/scale) for i, scale in enumerate(scales)])
 
-        super().__init__(pdf, n_dim, pdf_bounds=[(0, 10 * scales[i]) for i in range(n_dim)], mean=mean, covariance_matrix=covariance_matrix)
+        super().__init__(pdf, n_dim, pdf_bounds=[(0, 100 * scales[i]) for i in range(n_dim)], mean=mean, covariance_matrix=covariance_matrix)
 
-class MonovariateExponentialPDF(ProbabilityDensityFunction):
+class UnivariateExponentialPDF(ProbabilityDensityFunction):
     def __init__(self, scale: float = 1.0) -> None:
         """
         Creates an Exponential Probability Distribution with a given scale (lambda).
@@ -295,7 +351,7 @@ class MonovariateExponentialPDF(ProbabilityDensityFunction):
         def pdf(x: np.ndarray):
             return (1/scale) * np.exp(-x/scale) if x >= 0 else 0.0
 
-        super().__init__(pdf, 1, pdf_bounds=[(0, 10 * scale)], mean=mean, covariance_matrix=covariance_matrix)
+        super().__init__(pdf, 1, pdf_bounds=[(0, 100 * scale)], mean=mean, covariance_matrix=covariance_matrix)
 
 class UnivariateBetaPDF(ProbabilityDensityFunction):
     def __init__(self, alpha: float = 1.0, beta: float = 1.0) -> None:
@@ -335,11 +391,11 @@ class UnivariateGammaPDF(ProbabilityDensityFunction):
         variance = shape * (scale ** 2)
         covariance_matrix = np.array([[variance]])
 
-        def pdf(x: np.ndarray):
+        def pdf(x):
             if x >= 0:
                 return (x**(shape-1) * np.exp(-x/scale)) / (gamma_func(shape) * scale**shape)
             else:
                 return 0.0
 
-        super().__init__(pdf, 1, pdf_bounds=[(0, 10 * scale)], mean=mean, covariance_matrix=covariance_matrix)
+        super().__init__(pdf, 1, pdf_bounds=[(0, 100 * scale)], mean=mean, covariance_matrix=covariance_matrix)
 
