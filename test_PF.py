@@ -13,7 +13,7 @@ def h(x, v):
     return H @ x + v
 
 # Parameters
-N_particles = 1000
+N_particles = 100
 dt = 1  # Time step
 initial_position = 0
 initial_velocity = 1  # Moving with constant velocity

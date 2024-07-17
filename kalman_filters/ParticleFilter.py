@@ -2,147 +2,8 @@ import numpy as np
 import math
 from numpy.linalg import det, inv, slogdet, cholesky
 from scipy.stats import multivariate_normal
-
-class ProbabilityDensityFunction:
-    def __init__(self, pdf, sampling_method: str = "default", n_dim: int = 1, mean: np.ndarray = None, covariance_matrix: np.ndarray = None) -> None:
-        """
-        A Probability Density Function is assumed to cover the vector space R^n_dim, and to have the regular properties of the pdf.
-
-        Parameters:
-            pdf (callable): A probability density function over R^n_dim. Takes a vector as an input and returns a probability. Is assumed to always be positive, and has an integral of 1.
-            sampling_method (str): Specifies the method to be used for sampling. Must be one of ["default", "gaussian"].
-            n_dim (int): The dimension of the space.
-            mean (np.ndarray): The mean of the distribution, if known.
-            covariance_matrix (np.ndarray): The covariance matrix of the distribution, if known.
-        """
-        self.pdf = pdf
-        self.sampling_method = sampling_method
-        self.n_dim = n_dim
-        self.mean = mean
-        self.covariance_matrix = covariance_matrix
-        self.space_bounds = None
-
-        if self.mean is None or self.covariance_matrix is None:
-            samples = self.sample(10000)  # Use a large number of samples to estimate
-            if self.mean is None:
-                self.mean = self.compute_mean(samples)
-            if self.covariance_matrix is None:
-                self.covariance_matrix = self.compute_covariance(samples)
-        
-        self.space_bounds = self.compute_space_bounds()
-
-    def evaluate(self, x):
-        return self.pdf(x)
-    
-    def sample(self, n_points):
-        if self.sampling_method == "default":
-            return self.default_sampler(n_points)
-        elif self.sampling_method == "gaussian":
-            return self.gaussian_sampler(n_points)
-        
-    def default_sampler(self, n_points):
-        if self.space_bounds is None:
-            space_bounds = [(-10**6, 10**6) for _ in range(self.n_dim)]
-        else:
-            space_bounds = self.space_bounds
-
-        samples = np.zeros((n_points, self.n_dim))
-        for i in range(n_points):
-            while True:
-                point = np.array([np.random.uniform(low, high) for low, high in space_bounds])
-                prob = self.pdf(point)
-                if np.random.rand() < prob:
-                    samples[i] = point
-                    break
-        return samples
-    
-    def gaussian_sampler(self, n_points):
-        return multivariate_normal(mean=self.mean, cov=self.covariance_matrix).rvs(size=n_points)
-
-    def compute_mean(self, samples):
-        """
-        Compute the mean of the samples.
-        
-        Parameters:
-        samples: np.ndarray - Sampled points
-        
-        Returns:
-        mean: np.ndarray - Computed mean
-        """
-        return np.mean(samples, axis=0)
-    
-    def compute_covariance(self, samples: np.ndarray):
-        """
-        Compute the covariance matrix of the samples.
-        
-        Parameters:
-        samples: np.ndarray - Sampled points
-        
-        Returns:
-        covariance_matrix: np.ndarray - Computed covariance matrix
-        """
-        return np.cov(samples.T, rowvar=False)
-    
-    def compute_space_bounds(self, bound_factor: int | float = 10):
-        """
-        Compute the space bounds based on the mean and covariance matrix.
-
-        Parameters:
-            bound_factor (int or float): A number to scale the bound.
-        
-        Returns:
-        space_bounds: list of tuples - Computed bounds for each dimension
-        """
-        max_eigenvalue = np.max(np.linalg.eigvals(self.covariance_matrix))
-        x = np.abs(self.mean) * bound_factor * max_eigenvalue
-        space_bounds = [(self.mean[i] - x[i], self.mean[i] + x[i]) for i in range(self.n_dim)]
-        return space_bounds
-
-class GaussianPDF(ProbabilityDensityFunction):
-    def __init__(self, mean: np.ndarray|None = None, covariance_matrix: np.ndarray|None = None) -> None:
-        if mean is None:
-            mean = np.zeros(2)  # Default to 2D for simplicity if not specified
-        if covariance_matrix is None:
-            covariance_matrix = np.eye(len(mean))  # Identity matrix of dimension len(mean)
-
-        n_dim = mean.size
-
-        # Define the pdf function using a closure to capture mean and covariance_matrix
-        def pdf(x: np.ndarray):
-            # Calculate the normalizing constant
-            denom = np.sqrt((2 * np.pi) ** self.n_dim * det(covariance_matrix))
-            # Calculate the exponent term
-            x_m = x - mean
-            exponent = -0.5 * np.dot(x_m.T, np.dot(inv(covariance_matrix), x_m))
-            return np.exp(exponent) / denom
-
-        super().__init__(pdf, "gaussian", n_dim, mean, covariance_matrix)
-    
-    def change_gaussian_law(self, new_mean: np.ndarray|None = None, new_covariance_matrix: np.ndarray|None = None):
-        """
-        Allow to update the gaussian law of this PDF by simply providing new mean vector and covariance matrix.
-
-        Parameters:
-            new_mean (np.ndarray): The new mean vector.
-            new_covariance_matrix (np.ndarray): The new covariance matrix.
-        """
-        if new_mean is not None or new_covariance_matrix is not None:
-            if new_mean is not None and new_mean.size == self.n_dim:
-                self.mean = new_mean
-            
-            if new_covariance_matrix is not None and new_covariance_matrix.shape[0] == self.n_dim:
-                self.covariance_matrix = new_covariance_matrix
-            
-            def new_pdf(x: np.ndarray):
-                # Calculate the normalizing constant
-                denom = np.sqrt((2 * np.pi) ** self.n_dim * det(self.covariance_matrix))
-                # Calculate the exponent term
-                x_m = x - self.mean
-                exponent = -0.5 * np.dot(x_m.T, np.dot(inv(self.covariance_matrix), x_m))
-                return np.exp(exponent) / denom
-            
-            self.pdf = new_pdf
-
+from scipy.integrate import nquad
+from PDF import ProbabilityDensityFunction, MultivariateGaussianPDF
 
 class ParticleFilter:
     def __init__(self, f, h, N_particles: int, dynamics_noise_pdf: ProbabilityDensityFunction, measurement_noise_pdf: ProbabilityDensityFunction, x0_pdf: ProbabilityDensityFunction | None = None, x0: np.ndarray | None = None, P0: np.ndarray | None = None):
@@ -170,7 +31,7 @@ class ParticleFilter:
         self.x0_pdf = x0_pdf
 
         if x0_pdf is None:
-            self.x0_pdf = GaussianPDF(x0, P0)
+            self.x0_pdf = MultivariateGaussianPDF(x0, P0)
 
         self.particles = self.x0_pdf.sample(N_particles)
         self.weights = np.ones(N_particles) / N_particles   
@@ -385,7 +246,7 @@ class ExtendedParticleFilter:
         self.x0_pdf = x0_pdf
 
         if x0_pdf is None:
-            self.x0_pdf = GaussianPDF(x0, P0)
+            self.x0_pdf = MultivariateGaussianPDF(x0, P0)
 
         self.particles = self.x0_pdf.sample(N_particles)
         self.weights = np.ones(N_particles) / N_particles

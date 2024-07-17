@@ -44,7 +44,8 @@ true_state = 0
 num_steps = 20
 true_states = []
 measurements = []
-for _ in range(num_steps):
+for i in range(num_steps):
+    print(i)
     true_state += np.random.normal(0, process_noise_std)
     true_states.append(true_state)
     measurement = true_state + np.random.normal(0, measurement_noise_std)
