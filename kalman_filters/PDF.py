@@ -337,5 +337,5 @@ class UnivariateGammaPDF(ProbabilityDensityFunction):
             else:
                 return 0.0
 
-        super().__init__(pdf, 1, pdf_bounds=[(10 * scale)], mean=mean, covariance_matrix=covariance_matrix)
+        super().__init__(pdf, 1, pdf_bounds=[(0, 10 * scale)], mean=mean, covariance_matrix=covariance_matrix)
 

@@ -18,7 +18,7 @@ class HybridExtendedKalmanFilter:
             P0 (np.ndarray): Initial estimation error covariance matrix.
             x0 (np.ndarray): Initial state estimate vector.
             t_span (float|int): Time span for each integration step.
-            precision (int): Number of points to use for the numerical integration.
+            precision (int): Number of points to use for the numerical integration. The bigger it is, the more precise the filter will be, but computations will be heavier.
         """
         self.f = f
         self.h = h

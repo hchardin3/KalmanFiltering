@@ -21,17 +21,18 @@ class ParticleFilter:
             P0 (np.ndarray): Initial estimation error covariance matrix, if known. Optional if x0_pdf is inputed.
         """
         if x0_pdf is None and (x0 is None or P0 is None):
-            raise(TypeError("Either specify the PDF of x0 or its mean and distribution covariance"))
+            raise(ValueError("User should specify either x0_pdf or both x0 and P0"))
         
         self.f = f
         self.h = h
 
         self.dynamics_noise_pdf = dynamics_noise_pdf
         self.measurement_noise_pdf = measurement_noise_pdf
-        self.x0_pdf = x0_pdf
 
         if x0_pdf is None:
             self.x0_pdf = MultivariateGaussianPDF(x0, P0)
+        else:
+            self.x0_pdf = x0_pdf
 
         self.particles = self.x0_pdf.sample(N_particles)
         self.weights = np.ones(N_particles) / N_particles   
@@ -235,6 +236,8 @@ class ExtendedParticleFilter:
             P0 (np.ndarray): Initial estimation error covariance matrix, if known. Optional if x0_pdf is inputed.
         """
         
+        if x0_pdf is None and (x0 is None or P0 is None):
+            raise(ValueError("User should specify either x0_pdf or both x0 and P0"))
         
         self.f = f
         self.F_jac = F_jac
@@ -243,10 +246,11 @@ class ExtendedParticleFilter:
 
         self.dynamics_noise_pdf = dynamics_noise_pdf
         self.measurement_noise_pdf = measurement_noise_pdf
-        self.x0_pdf = x0_pdf
 
         if x0_pdf is None:
             self.x0_pdf = MultivariateGaussianPDF(x0, P0)
+        else:
+            self.x0_pdf = x0_pdf
 
         self.particles = self.x0_pdf.sample(N_particles)
         self.weights = np.ones(N_particles) / N_particles
