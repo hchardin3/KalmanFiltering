@@ -8,16 +8,38 @@ from scipy.linalg import cholesky
 class UnscentedKalmanFilter:
     def __init__(self, f, h, Q: np.ndarray, R: np.ndarray, x0: np.ndarray, P0: np.ndarray, kappa: float = 0.):
         """
-        Initializes the Unscented Kalman Filter with the provided functions and matrices.
+        Initializes the Unscented Kalman Filter (UKF), an advanced filter that utilizes a deterministic 
+        sampling technique to capture the mean and covariance estimates with higher accuracy than the 
+        Extended Kalman Filter, especially for non-linear models.
+
+        The UKF uses sigma points to approximate the probability distribution of the state. These points 
+        are propagated through the non-linear functions, from which the new mean and covariance estimates 
+        are derived.
 
         Parameters:
-            f (callable): State transition function. Should take arguments (x, u, t) and return the new state.
-            h (callable): Measurement function. Should take arguments (x, t) and return the measurement.
-            Q (np.ndarray): Process noise covariance matrix.
-            R (np.ndarray): Measurement noise covariance matrix.
-            x0 (np.ndarray): Initial state estimate vector.
-            P0 (np.ndarray): Initial estimation error covariance matrix.
-            kappa (float): Scaling parameter for the sigma points.
+            f (callable): State transition function, which models the next state from the current state,
+                          control input, and time. It should take the form f(x, u, t) -> np.ndarray.
+            h (callable): Measurement function, which predicts the measurement expected from the current state.
+                          It should take the form h(x, t) -> np.ndarray.
+            Q (np.ndarray): Process noise covariance matrix, which models the uncertainty in the process or model.
+            R (np.ndarray): Measurement noise covariance matrix, which models the uncertainty in sensor measurements.
+            x0 (np.ndarray): Initial state estimate, a vector representing the estimated state of the system at t0.
+            P0 (np.ndarray): Initial covariance estimate, a matrix representing the estimated accuracy of the state estimate.
+            kappa (float): Scaling parameter for the sigma points, which affects the spread of the sigma points around
+                           the mean state estimate. Typically, kappa is set to 0 for optimal performance in most applications.
+
+        Example:
+            # Define state transition and measurement functions
+            def transition_function(x, u, t):
+                return np.array([x[0] + u[0]*t + np.random.normal(), x[1] + u[1]*t + np.random.normal()])
+
+            def measurement_function(x, t):
+                return np.array([x[0] + np.random.normal(), x[1] + np.random.normal()])
+
+            # Initialize the filter
+            ukf = UnscentedKalmanFilter(transition_function, measurement_function,
+                                        Q=np.diag([0.1, 0.1]), R=np.diag([0.1, 0.1]),
+                                        x0=np.array([0, 0]), P0=np.eye(2), kappa=0)
         """
         self.f = f
         self.h = h

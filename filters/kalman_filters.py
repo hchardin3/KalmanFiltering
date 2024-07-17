@@ -8,7 +8,13 @@ from scipy.linalg import expm, inv
 class KalmanFilter:
     def __init__(self, F: np.ndarray, G: np.ndarray, Q: np.ndarray, H: np.ndarray, R: np.ndarray, x0: np.ndarray, P0: np.ndarray):
         """
-        Initializes the Kalman Filter with the provided matrices.
+        The basic Kalman Filter works for systems with discrete dynamics (hence called state transitions) and measurement.
+
+        The state transition of the system is assumed to go by the following equations:
+            x(k+1) = F(k) * x(k) + G(k) * u(k) + w(k) where w(k) follows a gaussian law of mean 0 and variance Q(k).
+            y(k) = H(k) x(k) + v(k) where v(k) follows a gaussian law of mean 0 and variance R(k).
+
+        The Kalman Filter is initialized with the provided matrices.
         
         Parameters:
             F (np.ndarray): State transition matrix.
@@ -17,7 +23,7 @@ class KalmanFilter:
             H (np.ndarray): Observation matrix.
             R (np.ndarray): Measurement noise covariance.
             x0 (np.ndarray): Initial state estimate.
-            P0 (np.ndarray): Initial estimation error covariance.
+            P0 (np.ndarray): Initial estimation error covariance.        
         """
         self.F = F
         self.G = G
@@ -32,7 +38,7 @@ class KalmanFilter:
     
     def predict(self, u: np.ndarray):
         """
-        Predicts the new state.
+        Predicts the new state as x_hat_minus = F * x_hat_plus + G * u.
 
         Parameters:
             u (np.ndarray): Control vector.
@@ -105,7 +111,18 @@ class KalmanFilter:
 class DiscretizedKalmanFilter(KalmanFilter):
     def __init__(self, dt: float, A: np.ndarray, B: np.ndarray, Q: np.ndarray, H: np.ndarray, R: np.ndarray, x0: np.ndarray, P0: np.ndarray):
         """
-        Initializes the continuous-to-discrete Kalman Filter with the provided matrices and sampling time.
+        The goal of this filter is to discretize a system with continuous dynamics and discrete measurements every t seconds.
+
+        Consider the following system:
+            x'(t) = A * x(t) + B * u(t) + w(t), where w is a gaussian noise of mean 0 and variance Q.
+            y(tk) = H * x(tk) + v(tk), where v is a gaussian noise of mean 0 and variance R.
+        
+        The dynamics can then be discretized into a state transition as follow:
+            x(t(k+1)) = F * x(tk) + G * u(tk) + w(tk), where:
+                F = exp(A * delta_t), with delta_t the sampling time
+                G = integral(0, delta_t)(exp(A * tau) dtau) * B
+
+        Hence, to initialize this filter, you need to provide it with the continuous system parameters and a sampling time. 
         
         Parameters:
             dt (float): Sampling time.

@@ -10,21 +10,25 @@ from scipy.integrate import odeint
 class HybridExtendedKalmanFilter:
     def __init__(self, f, h, F_jacobian, H_jacobian, L, M, Q: np.ndarray, R: np.ndarray, x0: np.ndarray, P0: np.ndarray, t_span: float|int, precision: int=100):
         """
-        Initializes the Hybrid Extended Kalman Filter with the provided functions and matrices.
-        
+        Initializes a Hybrid Extended Kalman Filter designed for systems with continuous dynamics and discrete measurements.
+        This filter integrates state estimates and their uncertainties over time, updating them at discrete measurement points.
+
         Parameters:
-            f (callable): State transition function. Should take arguments (x, u, w, t) and return the state derivative.
-            h (callable): Measurement function. Should take arguments (x, v, t) and return the measurement.
-            F_jacobian (callable): Function to compute the Jacobian of f. Should take arguments (x, u, w, t) and return the Jacobian matrix.
-            H_jacobian (callable): Function to compute the Jacobian of h. Should take arguments (x, t) and return the Jacobian matrix.
-            L (callable): Function to compute df/dw at x_hat. Should take arguments (x, u, w, t) and return the matrix.
-            M (callable): Function to compute dh/dw at x_hat. Should take arguments (x, t) and return the matrix.
-            Q (np.ndarray): Process noise covariance matrix.
-            R (np.ndarray): Measurement noise covariance matrix.
+            f (callable): Continuous-time state transition function modeling the dynamics, taking state x, control u, process noise w, and time t, returning the state derivative.
+            h (callable): Measurement function modeling the observation process, taking state x, measurement noise v, and time t, returning the measured output.
+            F_jacobian (callable): Function to compute the Jacobian matrix of f with respect to state x.
+            H_jacobian (callable): Function to compute the Jacobian matrix of h with respect to state x.
+            L (callable): Function to compute the matrix derivative of f with respect to process noise w.
+            M (callable): Function to compute the matrix derivative of h with respect to measurement noise v.
+            Q (np.ndarray): Process noise covariance matrix, quantifying the uncertainty in the process model.
+            R (np.ndarray): Measurement noise covariance matrix, quantifying the uncertainty in the measurement process.
             x0 (np.ndarray): Initial state estimate vector.
             P0 (np.ndarray): Initial estimation error covariance matrix.
-            t_span (float|int): Time span for each integration step.
-            precision (int): Number of points to use for the numerical integration. The bigger it is, the more precise the filter will be, but computations will be heavier.
+            t_span (float|int): Duration over which the continuous dynamics are integrated.
+            precision (int): Number of points for numerical integration, balancing precision with computational load.
+
+        The filter uses numerical integration to evolve state estimates between measurements, making it suitable for
+        systems where an analytical solution to the state equations is not feasible.
         """
         self.f = f
         self.h = h

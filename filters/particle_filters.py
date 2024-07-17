@@ -13,17 +13,21 @@ from stats.probability_density import ProbabilityDensityFunction, MultivariateGa
 class ParticleFilter:
     def __init__(self, f, h, N_particles: int, dynamics_noise_pdf: ProbabilityDensityFunction, measurement_noise_pdf: ProbabilityDensityFunction, x0_pdf: ProbabilityDensityFunction | None = None, x0: np.ndarray | None = None, P0: np.ndarray | None = None):
         """
-        Initialization of a classic particle filter. 
+        Initializes a classic Particle Filter, which uses a set of particles to represent the posterior distributions
+        of the state space. This method is particularly effective for non-linear and non-Gaussian state estimation problems.
 
         Parameters:
-            f (callable): State transition function. Should take arguments (x, w) and return the new state.
-            h (callable): Measurement function. Should take arguments (x, v) and return the measurement.
-            N_particles (int): Number of particle in the filter. A higher number means enhanced precision but heavier computation on each steps.
-            dynamics_noise_pdf (ProbabilityDensityFunction): The PDF of w the dynamics noise.
-            measurement_noise_pdf (ProbabilityDensityFunction): The PDF of v the measurement noise.
-            x0_pdf (ProbabilityDensityFunction): The PDF of the initial state x0. If None, then x0 and P0 have to be initialized (the PDF will then be assumed to be a gaussian).
-            x0 (np.ndarray): Initial state estimate vector, if known. Optional if x0_pdf is inputed.
-            P0 (np.ndarray): Initial estimation error covariance matrix, if known. Optional if x0_pdf is inputed.
+            f (callable): State transition function, defines how the state evolves. It should take the current state x and process noise w, returning the next state.
+            h (callable): Measurement function, defines how the measurements are generated from the state. It should take the current state x and measurement noise v, returning the measurement.
+            N_particles (int): Number of particles to use in the filter. Increasing the number of particles can improve  the approximation at the cost of computational complexity.
+            dynamics_noise_pdf (ProbabilityDensityFunction): Probability density function for the process noise w.
+            measurement_noise_pdf (ProbabilityDensityFunction): Probability density function for the measurement noise v.
+            x0_pdf (ProbabilityDensityFunction, optional): Probability density function for generating the initial state particles. If not provided, x0 and P0 must be given to define  a Gaussian distribution.
+            x0 (np.ndarray, optional): Initial state estimate vector, used if x0_pdf is not provided.
+            P0 (np.ndarray, optional): Initial covariance matrix, used if x0_pdf is not provided.
+
+        Raises:
+            ValueError: If neither x0_pdf is provided nor both x0 and P0 are specified.
         """
         if x0_pdf is None and (x0 is None or P0 is None):
             raise(ValueError("User should specify either x0_pdf or both x0 and P0"))
@@ -229,19 +233,25 @@ class ParticleFilter:
 class ExtendedParticleFilter:
     def __init__(self, f, F_jac, h, H_jac, N_particles: int, dynamics_noise_pdf: ProbabilityDensityFunction, measurement_noise_pdf: ProbabilityDensityFunction, x0_pdf: ProbabilityDensityFunction | None = None, x0: np.ndarray | None = None, P0: np.ndarray | None = None):
         """
-        Initialization of an extended Kalman particle filter. 
+        Initializes an Extended Particle Filter, which integrates the linearized approach of the Extended Kalman Filter
+        within the particle filter framework. This filter is useful for systems where non-linearities can be approximately
+        linearized around the current estimate but still benefit from a particle-based representation.
 
         Parameters:
-            f (callable): State transition function. Should take arguments (x, w) and return the new state.
-            F_jac (callable): Space jacobian of f.
-            h (callable): Measurement function. Should take arguments (x, v) and return the measurement.
-            H_jac (callable): Space jacobian of h.
-            N_particles (int): Number of particle in the filter. A higher number means enhanced precision but heavier computation on each steps.
-            dynamics_noise_pdf (ProbabilityDensityFunction): The PDF of w the dynamics noise.
-            measurement_noise_pdf (ProbabilityDensityFunction): The PDF of v the measurement noise.
-            x0_pdf (ProbabilityDensityFunction): The PDF of the initial state x0. If None, then x0 and P0 have to be initialized (the PDF will then be assumed to be a gaussian).
-            x0 (np.ndarray): Initial state estimate vector, if known. Optional if x0_pdf is inputed.
-            P0 (np.ndarray): Initial estimation error covariance matrix, if known. Optional if x0_pdf is inputed.
+            f (callable): Non-linear state transition function, similar to the basic Particle Filter.
+            F_jac (callable): Jacobian of the state transition function f, used to linearize the process model.
+            h (callable): Non-linear measurement function, similar to the basic Particle Filter.
+            H_jac (callable): Jacobian of the measurement function h, used to linearize the measurement model.
+            N_particles (int): Number of particles to use in the filter.
+            dynamics_noise_pdf (ProbabilityDensityFunction): PDF for the process noise.
+            measurement_noise_pdf (ProbabilityDensityFunction): PDF for the measurement noise.
+            x0_pdf (ProbabilityDensityFunction, optional): PDF for generating the initial state particles.
+            x0 (np.ndarray, optional): Initial state estimate vector, used if x0_pdf is not provided.
+            P0 (np.ndarray, optional): Initial covariance matrix, used if x0_pdf is not provided.
+
+            
+        Raises:
+            ValueError: If neither x0_pdf is provided nor both x0 and P0 are specified.
         """
         
         if x0_pdf is None and (x0 is None or P0 is None):

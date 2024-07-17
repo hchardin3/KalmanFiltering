@@ -8,17 +8,20 @@ from scipy.stats import multivariate_normal
 from scipy.integrate import nquad
 
 class ProbabilityDensityFunction:
-    def __init__(self, pdf, n_dim: int, pdf_bounds: list[tuple[float, float]]|None = None, sampling_method: str = "default", mean: np.ndarray = None, covariance_matrix: np.ndarray = None) -> None:
+    def __init__(self, pdf, n_dim: int, pdf_bounds: list[tuple[float, float]]|None = None, sampling_method: str = "default", mean: np.ndarray = None, covariance_matrix: np.ndarray = None):
         """
-        A Probability Density Function is assumed to cover the vector space R^n_dim, and to have the regular properties of the pdf.
+        Initializes a general Probability Density Function (PDF) object for defining and working with custom PDFs.
 
         Parameters:
-            pdf (callable): A probability density function over R^n_dim. Takes a vector as an input and returns a probability. Is assumed to always be positive, and to have an integral over R^n_dim of 1.
-            n_dim (int): The dimension of the vector space.
-            pdf_bounds (list of tuples): The scalar limits of the definition space of the pdf in R^n_dim. Should be of length n_dim.
-            sampling_method (str): Specifies the method to be used for sampling. Must be one of ["default", "gaussian"].
-            mean (np.ndarray): The mean of the distribution, if known.
-            covariance_matrix (np.ndarray): The covariance matrix of the distribution, if known.
+            pdf (callable): A function that takes a vector (np.ndarray) and returns the probability density at that point.
+            n_dim (int): Dimensionality of the PDF (i.e., the number of random variables it represents).
+            pdf_bounds (list of tuple of float, optional): Bounds for each dimension beyond which the PDF is considered negligible. Each tuple represents (min, max).
+            sampling_method (str): Method used for sampling from the PDF. Supported methods: 'default' for custom sampling logic, 'gaussian' for Gaussian approximations.
+            mean (np.ndarray, optional): Known mean of the distribution. Provided to avoid recomputation if already known.
+            covariance_matrix (np.ndarray, optional): Known covariance matrix of the distribution. Provided to avoid recomputation if already known.
+
+        The `pdf` function should integrate to 1 over its entire support and must be capable of handling inputs of shape (n_dim,).
+        If `mean` and `covariance_matrix` are not provided, they will be estimated if possible.
         """
         self.pdf = pdf
 
@@ -209,15 +212,16 @@ class ProbabilityDensityFunction:
             return bounds
 
 class UnivariateGaussianPDF(ProbabilityDensityFunction):
-    def __init__(self, mean: float|int = 0, covariance: float|int|None = None) -> None:
+    def __init__(self, mean: float|int = 0, covariance: float|int|None = None):
         """
-        Creates a univariate gaussian distribution based on the provided mean and covariance.
+        Initializes a univariate Gaussian distribution with specified mean and variance.
 
         Parameters:
-            mean (float or int): The mean of the gaussian distribution.
-            covariance_matrix(np.ndarray): The covariance of the gaussian distribution. By default equal to 1.
-        """
-        
+            mean (float|int): Mean of the Gaussian distribution.
+            covariance (float|int, optional): Variance of the Gaussian distribution. Defaults to 1 if not specified.
+
+        This class represents a Gaussian distribution for a single variable and leverages scipy's multivariate_normal for efficiency.
+        """        
         if covariance is None:
             covariance = 1
 
@@ -234,13 +238,15 @@ class UnivariateGaussianPDF(ProbabilityDensityFunction):
         super().__init__(pdf, 1, pdf_bounds=bounds, sampling_method="gaussian", mean=np.array(mean), covariance_matrix=np.diag([covariance]))
 
 class MultivariateGaussianPDF(ProbabilityDensityFunction):
-    def __init__(self, mean: np.ndarray = np.zeros(2), covariance_matrix: np.ndarray|None = None) -> None:
+    def __init__(self, mean: np.ndarray = np.zeros(2), covariance_matrix: np.ndarray|None = None):
         """
-        Creates a multivariate gaussian distribution based on the provided mean and covariance.
+        Initializes a multivariate Gaussian distribution with specified mean and covariance matrix.
 
         Parameters:
-            mean (np.ndarray): The mean of the gaussian distribution.
-            covariance_matrix(np.ndarray): The covariance of the gaussian distribution. By default equal to np.eye(mean.size)
+            mean (np.ndarray): Mean vector of the Gaussian distribution.
+            covariance_matrix (np.ndarray, optional): Covariance matrix of the Gaussian distribution. If not provided, defaults to the identity matrix scaled by the dimension of `mean`.
+
+        Ensures that the covariance matrix is square and matches the dimensionality of the mean vector. Uses scipy's multivariate_normal for computations.
         """
         if len(mean.shape) != 1:
             raise(ValueError("mean should be a vector"))
@@ -271,13 +277,15 @@ class MultivariateGaussianPDF(ProbabilityDensityFunction):
         super().__init__(pdf, n_dim, pdf_bounds=bounds, sampling_method="gaussian", mean=mean, covariance_matrix=covariance_matrix)
 
 class UnivariateUniformPDF(ProbabilityDensityFunction):
-    def __init__(self, lower_bound: int|float, upper_bound: int|float) -> None:
+    def __init__(self, lower_bound: int|float, upper_bound: int|float):
         """
-        Creates a Uniform Probability Distribution over the specified bounds.
+        Initializes a uniform distribution over a specified range.
 
         Parameters:
-            lower_bound (int or float): The lower bound of the uniform distribution.
-            upper_bound (int or float): The upper bound of the uniform distribution.
+            lower_bound (int|float): The lower bound of the distribution.
+            upper_bound (int|float): The upper bound of the distribution. Must be strictly greater than `lower_bound`.
+
+        This distribution assigns equal probability to all outcomes in the specified range and zero probability outside this range.
         """
         if upper_bound <= lower_bound:
             raise(ValueError("Please specify valid bounds"))
@@ -295,17 +303,25 @@ class UnivariateUniformPDF(ProbabilityDensityFunction):
         super().__init__(pdf, 1, pdf_bounds=bounds, mean=np.array(mean), covariance_matrix=np.diag([covariance_matrix]))
 
 class MultivariateUniformPDF(ProbabilityDensityFunction):
-    def __init__(self, bounds: list[tuple[float, float]]) -> None:
+    def __init__(self, bounds: list[tuple[float, float]]):
         """
-        Creates a Uniform Probability Distribution over the specified bounds.
+        Initializes a multivariate uniform distribution defined over specified bounds for each dimension.
 
         Parameters:
-            bounds (list of tuples of shape [lim1, lim2] with lim2 > lim1): The bounds of the uniform pdf for each dimension.
+            bounds (list of tuples of float): Bounds for each dimension in the format [(lower1, upper1), (lower2, upper2), ...]. Each tuple specifies the range for that dimension.
+
+        This class is suitable for defining uniform distributions in higher dimensions where each dimension can have different bounds.
         """
         n_dim = len(bounds)
 
         if n_dim == 1:
             raise(ValueError("Please use UnivariateUniformPDF for uniform pdfs of size 1"))
+        else:
+            for i in range(n_dim):
+                if len(bounds[i]) != 2:
+                    raise(ValueError(f"bound of index {i} is uncorrectly defined: should only include two numbers."))
+                elif bounds[i][0] >= bounds[i][1]:
+                    raise(ValueError(f"bound of index {i} is uncorrectly defined: lower bound should be strictly smaller than upper bound."))
 
         volume = np.prod([bound[1] - bound[0] for bound in bounds])
         mean = np.array([(bound[0] + bound[1]) / 2 for bound in bounds])
@@ -320,10 +336,13 @@ class MultivariateUniformPDF(ProbabilityDensityFunction):
 class MultivariateExponentialPDF(ProbabilityDensityFunction):
     def __init__(self, scales: np.ndarray) -> None:
         """
-        Creates a Multivariate Exponential Probability Distribution with given scales for each dimension.
+        Initializes a multivariate uniform distribution defined over specified bounds for each dimension.
 
         Parameters:
-            scales (np.ndarray): Scale parameters for each dimension.
+            bounds (list of tuples of float): Bounds for each dimension in the format [(lower1, upper1), (lower2, upper2), ...].
+                Each tuple specifies the range for that dimension.
+
+        This class is suitable for defining uniform distributions in higher dimensions where each dimension can have different bounds.
         """
         n_dim = scales.size
         mean = scales
@@ -337,12 +356,14 @@ class MultivariateExponentialPDF(ProbabilityDensityFunction):
         super().__init__(pdf, n_dim, pdf_bounds=[(0, 100 * scales[i]) for i in range(n_dim)], mean=mean, covariance_matrix=covariance_matrix)
 
 class UnivariateExponentialPDF(ProbabilityDensityFunction):
-    def __init__(self, scale: float = 1.0) -> None:
+    def __init__(self, scale: float = 1.0):
         """
-        Creates an Exponential Probability Distribution with a given scale (lambda).
+        Initializes a univariate exponential distribution with a specified scale parameter.
 
         Parameters:
-            scale (float): The scale parameter (1/lambda) of the exponential distribution. Default is 1.0.
+            scale (float): The scale parameter of the exponential distribution, often denoted as lambda^-1.
+
+        Represents the time between events in a Poisson point process, i.e., the time until the next event occurs.
         """
         mean = np.array([scale])
         covariance_matrix = np.array([[scale**2]])
