@@ -1,4 +1,4 @@
-from kalman_filters.particle_filters import ParticleFilter
+from filters.particle_filters import ParticleFilter
 from stats.probability_density import MultivariateGaussianPDF, UnivariateGaussianPDF, MultivariateUniformPDF
 import numpy as np
 
