@@ -13,7 +13,7 @@ from stats.multivariate_pdf import MultivariateGaussianPDF
 from stats.univariate_pdf import UnivariateGaussianPDF
 
 class ParticleFilter:
-    def __init__(self, f, h, N_particles: int, dynamics_noise_pdf: ProbabilityDensityFunction, measurement_noise_pdf: ProbabilityDensityFunction, x0_pdf: ProbabilityDensityFunction | None = None, x0: np.ndarray | None = None, P0: np.ndarray | None = None):
+    def __init__(self, f, h, N_particles: int, dynamics_noise_pdf: ProbabilityDensityFunction, measurement_noise_pdf: ProbabilityDensityFunction, resampling_method: str = "Regularized", x0_pdf: ProbabilityDensityFunction | None = None, x0: np.ndarray | None = None, P0: np.ndarray | None = None):
         """
         Initializes a classic Particle Filter, which uses a set of particles to represent the posterior distributions
         of the state space. This method is particularly effective for non-linear and non-Gaussian state estimation problems.
@@ -24,6 +24,7 @@ class ParticleFilter:
             N_particles (int): Number of particles to use in the filter. Increasing the number of particles can improve  the approximation at the cost of computational complexity.
             dynamics_noise_pdf (ProbabilityDensityFunction): Probability density function for the process noise w.
             measurement_noise_pdf (ProbabilityDensityFunction): Probability density function for the measurement noise v.
+            resampling_method (str, optional): The name of the resampling method to use. Must be in ["Stratified", "Systematic", "Residual", "Multinomial", "Regularized"]. Is set to "Regularized" by default.
             x0_pdf (ProbabilityDensityFunction, optional): Probability density function for generating the initial state particles. If not provided, x0 and P0 must be given to define  a Gaussian distribution.
             x0 (np.ndarray, optional): Initial state estimate vector, used if x0_pdf is not provided.
             P0 (np.ndarray, optional): Initial covariance matrix, used if x0_pdf is not provided.
@@ -62,6 +63,19 @@ class ParticleFilter:
         self.privilege_precision = True
         self.num_likelihood_samples = 10
 
+        self._resampling_methods = {
+            "Stratified": self.stratified_resampling,
+            "Systematic": self.systematic_resampling,
+            "Residual": self.residual_resampling,
+            "Multinomial": self.multinomial_resampling,
+            "Regularized": self.regularized_resampling
+        }
+
+        if resampling_method not in self._resampling_methods:
+            raise(ValueError(f"resampling_method must be in {self.resampling_methods.keys()}"))
+        else:
+            self.resampling_method = resampling_method
+
     def predict(self):
         """
         Propagates particles using the process model.
@@ -97,10 +111,7 @@ class ParticleFilter:
         self.weights /= np.sum(self.weights)
 
         # Resample particles based on updated weights
-        if regularized_resampling:
-            self.regularized_resampling(x_minus)
-        else:
-            self.resample()
+        self._resampling_methods[self.resampling_method]()        
         
         # Update mean and covariance estimates
         self.estimate()
@@ -149,22 +160,81 @@ class ParticleFilter:
         self.x_hat_plus = np.average(self.particles, weights=self.weights, axis=0)
         self.P_plus = np.cov(self.particles.T, aweights=self.weights)
     
-    def resample(self):
+    def stratified_resampling(self):
         """
-        Resamples particles based on weights using systematic resampling.
+        Performs stratified resampling on the particles. This method divides the range [0, 1) into N equal intervals
+        and draws one sample from each interval. This approach ensures that each segment of the weight distribution
+        contributes exactly one particle, which can help in reducing variance and improving the diversity of the particles.
         """
-        positions = (np.arange(self.N_particles) + np.random.random()) / self.N_particles
-        indexes = np.zeros(self.N_particles, 'i')
+        N = self.N_particles
+        # Generate a random number for each particle within its stratified interval
+        positions = np.random.rand(N) / N + np.linspace(0, 1 - 1/N, N)
+        indexes = np.zeros(N, 'i')
         cumulative_sum = np.cumsum(self.weights)
         i, j = 0, 0
-        while i < self.N_particles:
+        while i < N:
             if positions[i] < cumulative_sum[j]:
                 indexes[i] = j
                 i += 1
             else:
                 j += 1
         self.particles = self.particles[indexes]
-        self.weights.fill(1.0 / self.N_particles)
+        self.weights.fill(1.0 / N)
+
+    def systematic_resampling(self):
+        """
+        Performs systematic resampling on the particles. This method starts from a random position within the first interval
+        and selects particles at regular intervals from there. This method is efficient and maintains a spread of samples
+        across the entire distribution, reducing the likelihood of sample impoverishment.
+        """
+        N = self.N_particles
+        # Start at a random point in the first interval and advance by fixed steps
+        start = np.random.random() / N
+        positions = (start + np.arange(N) / N) % 1.0
+        indexes = np.zeros(N, 'i')
+        cumulative_sum = np.cumsum(self.weights)
+        i, j = 0, 0
+        while i < N:
+            while positions[i] > cumulative_sum[j]:
+                j += 1
+            indexes[i] = j
+            i += 1
+        self.particles = self.particles[indexes]
+        self.weights.fill(1.0 / N)
+
+    def residual_resampling(self):
+        """
+        Performs residual resampling on the particles. This method first deterministically selects particles based on
+        the integer part of their weights and then uses stochastic resampling for the residual part. This reduces the
+        randomness of the resampling process, which can help in maintaining important hypotheses in the particle set.
+        """
+        N = self.N_particles
+        indices = np.zeros(N, dtype=int)
+        num_copies = (N * self.weights).astype(int)
+        k = 0
+        for i in range(N):
+            for _ in range(num_copies[i]):
+                indices[k] = i
+                k += 1
+        residual_weights = self.weights - num_copies / N
+        residual_weights /= residual_weights.sum()
+        residual_indices = self.systematic_resampling()
+        indices[k:] = residual_indices[:N - k]
+        self.particles = self.particles[indices]
+        self.weights.fill(1.0 / N)
+
+    def multinomial_resampling(self):
+        """
+        Performs multinomial resampling on the particles. This is a simple and straightforward method where particles
+        are selected with replacement based on their weights. This can lead to scenarios where some particles are
+        chosen multiple times and others not at all, potentially leading to sample impoverishment.
+        """
+        N = self.N_particles
+        cumulative_sum = np.cumsum(self.weights)
+        cumulative_sum[-1] = 1.  # Ensure the last value is exactly one to avoid indexing errors
+        indexes = np.searchsorted(cumulative_sum, np.random.rand(N))
+        self.particles = self.particles[indexes]
+        self.weights.fill(1.0 / N)
     
     def regularized_resampling(self, x_minus: np.ndarray):
         """
@@ -233,7 +303,7 @@ class ParticleFilter:
 
 
 class ExtendedParticleFilter:
-    def __init__(self, f, F_jac, h, H_jac, N_particles: int, dynamics_noise_pdf: ProbabilityDensityFunction, measurement_noise_pdf: ProbabilityDensityFunction, x0_pdf: ProbabilityDensityFunction | None = None, x0: np.ndarray | None = None, P0: np.ndarray | None = None):
+    def __init__(self, f, F_jac, h, H_jac, N_particles: int, dynamics_noise_pdf: ProbabilityDensityFunction, measurement_noise_pdf: ProbabilityDensityFunction, resampling_method: str = "Regularized", x0_pdf: ProbabilityDensityFunction | None = None, x0: np.ndarray | None = None, P0: np.ndarray | None = None):
         """
         Initializes an Extended Particle Filter, which integrates the linearized approach of the Extended Kalman Filter
         within the particle filter framework. This filter is useful for systems where non-linearities can be approximately
@@ -247,6 +317,7 @@ class ExtendedParticleFilter:
             N_particles (int): Number of particles to use in the filter.
             dynamics_noise_pdf (ProbabilityDensityFunction): PDF for the process noise.
             measurement_noise_pdf (ProbabilityDensityFunction): PDF for the measurement noise.
+            resampling_method (str, optional): The name of the resampling method to use. Must be in ["Stratified", "Systematic", "Residual", "Multinomial", "Regularized"]. Is set to "Regularized" by default.
             x0_pdf (ProbabilityDensityFunction, optional): PDF for generating the initial state particles.
             x0 (np.ndarray, optional): Initial state estimate vector, used if x0_pdf is not provided.
             P0 (np.ndarray, optional): Initial covariance matrix, used if x0_pdf is not provided.
@@ -289,6 +360,19 @@ class ExtendedParticleFilter:
 
         self.privilege_precision = True
         self.num_likelihood_samples = 10
+
+        self._resampling_methods = {
+            "Stratified": self.stratified_resampling,
+            "Systematic": self.systematic_resampling,
+            "Residual": self.residual_resampling,
+            "Multinomial": self.multinomial_resampling,
+            "Regularized": self.regularized_resampling
+        }
+
+        if resampling_method not in self._resampling_methods:
+            raise(ValueError(f"resampling_method must be in {self.resampling_methods.keys()}"))
+        else:
+            self.resampling_method = resampling_method
 
     
     def predict(self):
@@ -350,10 +434,7 @@ class ExtendedParticleFilter:
         self.weights /= np.sum(self.weights)
 
         # Resample particles based on updated weights
-        if regularized_resampling:
-            self.regularized_resampling()
-        else:
-            self.resample()
+        self._resampling_methods[self.resampling_method]() 
         
         # Update mean and covariance estimates
         self.estimate()
@@ -401,23 +482,81 @@ class ExtendedParticleFilter:
         self.x_hat_plus = np.average(self.particles, weights=self.weights, axis=0)
         self.P_plus_0 = np.cov(self.particles.T, aweights=self.weights)
 
-    def resample(self):
+    def stratified_resampling(self):
         """
-        Resamples particles based on weights using systematic resampling.
+        Performs stratified resampling on the particles. This method divides the range [0, 1) into N equal intervals
+        and draws one sample from each interval. This approach ensures that each segment of the weight distribution
+        contributes exactly one particle, which can help in reducing variance and improving the diversity of the particles.
         """
-        positions = (np.arange(self.N_particles) + np.random.random()) / self.N_particles
-        indexes = np.zeros(self.N_particles, 'i')
+        N = self.N_particles
+        # Generate a random number for each particle within its stratified interval
+        positions = np.random.rand(N) / N + np.linspace(0, 1 - 1/N, N)
+        indexes = np.zeros(N, 'i')
         cumulative_sum = np.cumsum(self.weights)
         i, j = 0, 0
-        while i < self.N_particles:
+        while i < N:
             if positions[i] < cumulative_sum[j]:
                 indexes[i] = j
                 i += 1
             else:
                 j += 1
         self.particles = self.particles[indexes]
-        self.P_plus = self.P_plus[indexes]
-        self.weights.fill(1.0 / self.N_particles)
+        self.weights.fill(1.0 / N)
+
+    def systematic_resampling(self):
+        """
+        Performs systematic resampling on the particles. This method starts from a random position within the first interval
+        and selects particles at regular intervals from there. This method is efficient and maintains a spread of samples
+        across the entire distribution, reducing the likelihood of sample impoverishment.
+        """
+        N = self.N_particles
+        # Start at a random point in the first interval and advance by fixed steps
+        start = np.random.random() / N
+        positions = (start + np.arange(N) / N) % 1.0
+        indexes = np.zeros(N, 'i')
+        cumulative_sum = np.cumsum(self.weights)
+        i, j = 0, 0
+        while i < N:
+            while positions[i] > cumulative_sum[j]:
+                j += 1
+            indexes[i] = j
+            i += 1
+        self.particles = self.particles[indexes]
+        self.weights.fill(1.0 / N)
+
+    def residual_resampling(self):
+        """
+        Performs residual resampling on the particles. This method first deterministically selects particles based on
+        the integer part of their weights and then uses stochastic resampling for the residual part. This reduces the
+        randomness of the resampling process, which can help in maintaining important hypotheses in the particle set.
+        """
+        N = self.N_particles
+        indices = np.zeros(N, dtype=int)
+        num_copies = (N * self.weights).astype(int)
+        k = 0
+        for i in range(N):
+            for _ in range(num_copies[i]):
+                indices[k] = i
+                k += 1
+        residual_weights = self.weights - num_copies / N
+        residual_weights /= residual_weights.sum()
+        residual_indices = self.systematic_resampling()
+        indices[k:] = residual_indices[:N - k]
+        self.particles = self.particles[indices]
+        self.weights.fill(1.0 / N)
+
+    def multinomial_resampling(self):
+        """
+        Performs multinomial resampling on the particles. This is a simple and straightforward method where particles
+        are selected with replacement based on their weights. This can lead to scenarios where some particles are
+        chosen multiple times and others not at all, potentially leading to sample impoverishment.
+        """
+        N = self.N_particles
+        cumulative_sum = np.cumsum(self.weights)
+        cumulative_sum[-1] = 1.  # Ensure the last value is exactly one to avoid indexing errors
+        indexes = np.searchsorted(cumulative_sum, np.random.rand(N))
+        self.particles = self.particles[indexes]
+        self.weights.fill(1.0 / N)
     
     def regularized_resampling(self):
         """

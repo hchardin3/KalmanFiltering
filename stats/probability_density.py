@@ -36,7 +36,7 @@ class ProbabilityDensityFunction:
                 
                 super().__init__(pdf, n_dim, my_other_parameters)
 
-    Please note: you should at least define the custom pdf and specify n_dim in the initialization.                
+    Please note: you should at least define the custom pdf and specify n_dim in the initialization. Although defining the pdf's bounds, mean and covariance is not necessary, it is better to do so as it avoids the base class to compute them by itself.                
     """
     def __init__(self, pdf, n_dim: int, pdf_bounds: list[tuple[float, float]]|None = None, sampling_method: str = "default", mean: np.ndarray = None, covariance_matrix: np.ndarray = None):
         """
