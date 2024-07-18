@@ -149,7 +149,7 @@ class UnscentedKalmanFilter:
         """
         return self.x_hat_plus
 
-    def get_precision(self):
+    def get_error_covariance(self):
         """
         Returns the current estimation error covariance.
 

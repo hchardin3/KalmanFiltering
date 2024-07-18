@@ -83,13 +83,12 @@ class HybridExtendedKalmanFilter:
         
         Parameters:
             u (np.ndarray): Control input vector.
-        """
-        t_span = np.linspace(self.k * self.t_span, (self.k + 1) * self.t_span, self.precision)
-        
+        """        
         # Combine the initial state estimate and covariance
         combined_initial = np.hstack((self.x_hat_plus, self.P_plus.flatten()))
         
         # Integrate the combined state estimate and covariance
+        t_span = np.linspace(self.k * self.t_span, (self.k + 1) * self.t_span, self.precision)
         combined_result = odeint(self.combined_derivatives, combined_initial, t_span, args=(u,))[-1]
         
         # Extract the state estimate and covariance
@@ -156,7 +155,7 @@ class HybridExtendedKalmanFilter:
         """
         return self.x_hat_plus
     
-    def get_precision(self):
+    def get_error_covariance(self):
         """
         Returns the current estimation error covariance.
         
@@ -284,7 +283,7 @@ class DiscreteExtendedKalmanFilter:
         """
         return self.x_hat_plus
     
-    def get_precision(self):
+    def get_error_covariance(self):
         """
         Returns the current estimation error covariance.
         
