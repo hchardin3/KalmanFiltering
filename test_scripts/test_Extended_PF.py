@@ -8,13 +8,13 @@ def state_transition(x, w):
     return x * math.cos(x) + w
 
 def state_transition_jacobian(x):
-    return np.array([[np.cos(x) - x * np.sin(x)]])
+    return np.array([np.cos(x) - x * np.sin(x)])
 
 def measurement_function(x, v):
     return x**2 + v
 
 def measurement_jacobian(x):
-    return np.array([[2 * x]])
+    return np.array([2 * x])
 
 # Noise settings
 process_noise_std = 0.01
@@ -42,7 +42,7 @@ epf = ExtendedParticleFilter(
 
 # Simulate some data
 true_state = np.ones(1)
-num_steps = 100
+num_steps = 1000
 true_states = [true_state]
 positions = [true_state[0]]
 measurements = []

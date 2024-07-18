@@ -35,14 +35,14 @@ def M(x, t=0):
 x0 = np.array([0, 0])
 P0 = np.eye(2) * 0.1
 Q = np.eye(2) * 0.01
-R = np.array([[0.1]])
+R = np.array([[1]])
 
 # Create the filter
 dt = 1
 ekf = DiscreteExtendedKalmanFilter(f, F_jac, L, h, H_jac, M, Q, R, x0, P0)
 
 # Simulation parameters
-steps = 10
+steps = 100
 u = np.array([0.5])  # Constant acceleration
 measurements = []
 estimates = []
@@ -50,6 +50,7 @@ true_positions = []
 
 # Simulate the system
 for k in range(steps):
+    print(k)
     # Simulate measurement
     x_true = f(ekf.get_estimate(), u, dt=dt)
     true_positions.append(x_true)
