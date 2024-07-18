@@ -8,6 +8,36 @@ from scipy.stats import multivariate_normal
 from scipy.integrate import nquad
 
 class ProbabilityDensityFunction:
+    """
+    Probability Density Functions (thereafter referenced as "PDFs") are used in stochastic processes (especially for Particle Filters) and allow to represent random processes.
+
+    In this library, a PDF object includes an actual probability density function, that takes inputs over a space vector of specified dimension (thereafter referenced as `n_dim`), and returns a probability (positive number, with an integral of 1 over R^`n_dim`).
+
+    The user should specify the bounds of the PDF (ie the region of R^`n_dim` where the PDF is not zero), as well as its mean and covariance, even though they can be estimated at the creation of the object if not provided. However, this approximation will not be absolutely precise, and for now it is better to specify at least either the bounds or both the mean and covariance.
+    
+    Please note: you may create as many custom PDFs as you like using this object as a base class, however please check in `stats.univariate_pdf` and `stats.multivariate_pdf` if a similar PDF has not already been defined. The supported PDF until now include:
+        Gaussian PDF (both univariate and multivariate).
+        Uniform PDF (both univariate and multivariate).
+        Exponential PDF (both univariate and multivariate).
+        Beta PDF (univariate only).
+        Gamma PDF (univariate only)
+    
+    # Create your own custom PDF
+ 
+    To create your own custom PDF object, please follow the following framework:
+
+        class MyOwnPDF(ProbabilityDensityFunction):
+            def __init__(self, my_own_parameters):
+                (Define your custom parameters here)
+                n_dim = my_pdf_dimension    
+
+                def pdf(x):
+                    return p(x)
+                
+                super().__init__(pdf, n_dim, my_other_parameters)
+
+    Please note: you should at least define the custom pdf and specify n_dim in the initialization.                
+    """
     def __init__(self, pdf, n_dim: int, pdf_bounds: list[tuple[float, float]]|None = None, sampling_method: str = "default", mean: np.ndarray = None, covariance_matrix: np.ndarray = None):
         """
         Initializes a general Probability Density Function (PDF) object for defining and working with custom PDFs.
@@ -78,7 +108,7 @@ class ProbabilityDensityFunction:
             n_points (int): The number of samples to be return.
         
         Returns:
-            samples (np.ndarray): an array of size n_points * self.n_dim containing n_points random samples samples. Just return a self.n_dim array if n_points = 1.
+            samples (np.ndarray): an array of size `n_points * self.n_dim` containing `n_points` random samples samples. Just return a self.n_dim array if `n_points` = 1.
         """
         if self.sampling_method == "default":
             return self.default_sampler(n_points)
