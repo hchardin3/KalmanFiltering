@@ -20,9 +20,12 @@ class KalmanFilter:
             x0 (np.ndarray): The initial state estimate.
             P0 (np.ndarray): The initial estimation error covariance matrix.
 
-        The state evolution and measurement update equations are:
-            x(k+1) = F(k) * x(k) + G(k) * u(k) + w(k) where w(k) ~ N(0, Q(k))
-            y(k) = H(k) * x(k) + v(k) where v(k) ~ N(0, R(k))
+        Equations:
+            The state evolution and measurement update equations are:
+
+                x(k+1) = F(k) * x(k) + G(k) * u(k) + w(k) where w(k) ~ N(0, Q(k))
+
+                y(k) = H(k) * x(k) + v(k) where v(k) ~ N(0, R(k))
         """
         self.F = F
         self.G = G

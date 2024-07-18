@@ -16,7 +16,7 @@ class MultivariateGaussianPDF(ProbabilityDensityFunction):
         if len(mean.shape) != 1:
             raise(ValueError("mean should be a vector"))
         elif mean.size == 1:
-            raise(ValueError("Please use UnivariateGaussianPDF for gaussian distribution laws on R"))
+            raise(ValueError("Please use univariate_pdf.UnivariateGaussianPDF for gaussian distribution laws on R"))
         
         if covariance_matrix is None:
             covariance_matrix = np.eye(mean.size)
@@ -54,7 +54,7 @@ class MultivariateUniformPDF(ProbabilityDensityFunction):
         n_dim = len(bounds)
 
         if n_dim == 1:
-            raise(ValueError("Please use UnivariateUniformPDF for uniform pdfs of size 1"))
+            raise(ValueError("Please use univariate_pdf.UnivariateUniformPDF for uniform pdfs of size 1"))
         else:
             for i in range(n_dim):
                 if len(bounds[i]) != 2:
@@ -75,13 +75,12 @@ class MultivariateUniformPDF(ProbabilityDensityFunction):
 class MultivariateExponentialPDF(ProbabilityDensityFunction):
     def __init__(self, scales: np.ndarray) -> None:
         """
-        Initializes a multivariate uniform distribution defined over specified bounds for each dimension.
+        Initializes a multivariate exponential distribution defined using specified scales for each dimension.
 
         Parameters:
-            bounds (list of tuples of float): Bounds for each dimension in the format [(lower1, upper1), (lower2, upper2), ...].
-                Each tuple specifies the range for that dimension.
+            scales (np.ndarray): A vector used to define the scale of the exponential law over each dimension.
 
-        This class is suitable for defining uniform distributions in higher dimensions where each dimension can have different bounds.
+        This class is suitable for defining exponential distributions in higher dimensions where each dimension can have a different scale.
         """
         n_dim = scales.size
         mean = scales

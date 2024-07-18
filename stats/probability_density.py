@@ -39,7 +39,7 @@ class ProbabilityDensityFunction:
                 raise(ValueError("mean should be of size n_dim"))
             
         if covariance_matrix is not None:
-            if covariance_matrix.shape[0] == n_dim and covariance_matrix.shape[1] == n_dim:
+            if len(covariance_matrix.shape) == 2 and covariance_matrix.shape[0] == n_dim and covariance_matrix.shape[1] == n_dim:
                 self.covariance_matrix = covariance_matrix
             else:
                 raise(ValueError("covariance_matrix should be a square array of size n_dim"))
@@ -70,7 +70,16 @@ class ProbabilityDensityFunction:
     def evaluate(self, x):
         return self.pdf(x)
     
-    def sample(self, n_points):
+    def sample(self, n_points: int):
+        """
+        Allows to get random samples of a random variable that uses this pdf.
+
+        Parameters:
+            n_points (int): The number of samples to be return.
+        
+        Returns:
+            samples (np.ndarray): an array of size n_points * self.n_dim containing n_points random samples samples. Just return a self.n_dim array if n_points = 1.
+        """
         if self.sampling_method == "default":
             return self.default_sampler(n_points)
         elif self.sampling_method == "gaussian":

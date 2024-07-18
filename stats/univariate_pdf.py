@@ -41,7 +41,7 @@ class UnivariateUniformPDF(ProbabilityDensityFunction):
         This distribution assigns equal probability to all outcomes in the specified range and zero probability outside this range.
         """
         if upper_bound <= lower_bound:
-            raise(ValueError("Please specify valid bounds"))
+            raise(ValueError("Please specify valid bounds, ie lower_bound < upper_bound"))
         
         volume = upper_bound - lower_bound
         mean = (lower_bound + upper_bound) / 2
