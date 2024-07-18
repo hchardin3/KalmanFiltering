@@ -1,4 +1,5 @@
-from stats.probability_density import *
+from stats.multivariate_pdf import *
+from stats.univariate_pdf import *
 import numpy as np
 
 bounds = [(-10, 10) for _ in range(3)]

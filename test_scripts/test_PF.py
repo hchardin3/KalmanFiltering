@@ -1,5 +1,6 @@
 from filters.particle_filters import ParticleFilter
-from stats.probability_density import MultivariateGaussianPDF, UnivariateGaussianPDF, MultivariateUniformPDF
+from stats.univariate_pdf import UnivariateGaussianPDF
+from stats.multivariate_pdf import MultivariateGaussianPDF, MultivariateUniformPDF
 import numpy as np
 
 # Define the state transition and measurement functions
@@ -23,18 +24,18 @@ initial_state = np.array([initial_position, initial_velocity])
 initial_covariance = 0.001 * np.eye(2)
 
 # Dynamics and measurement noise
-process_noise_std = 0.5
-measurement_noise_std = 0.5
+process_noise_std = 10.
+measurement_noise_std = 10.
 
 # dynamics_noise_pdf = MultivariateGaussianPDF(mean=np.zeros(2), covariance_matrix=np.eye(2) * process_noise_std**2)
 dynamics_noise_pdf = MultivariateUniformPDF(bounds=[(-process_noise_std, process_noise_std) for _ in range(2)])
-measurement_noise_pdf = MultivariateGaussianPDF(mean=np.zeros(2), covariance_matrix=np.eye(2) * measurement_noise_std**2)
+measurement_noise_pdf = MultivariateUniformPDF(bounds=[(-measurement_noise_std, measurement_noise_std) for _ in range(2)])
 
 # Initialize Particle Filter
 pf = ParticleFilter(f, h, N_particles, dynamics_noise_pdf, measurement_noise_pdf, x0=initial_state, P0=initial_covariance)
 
 # Simulate over time
-steps = 200
+steps = 50
 real_state = [initial_state]
 real_position = [0]
 # positions = [initial_position]
