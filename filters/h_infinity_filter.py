@@ -1,20 +1,24 @@
 import numpy as np
 
 def is_positive_definite(matrix: np.ndarray):
-        """
-        Check if a given matrix is positive definite using the Cholesky decomposition.
+    """
+    Check if a given matrix is positive definite using the Cholesky decomposition.
 
-        Parameters:
-            matrix (np.ndarray): The matrix to check.
+    Parameters:
+        matrix (np.ndarray): The matrix to check. Must be a square matrix.
 
-        Returns:
-            bool: True if the matrix is positive definite, False otherwise.
-        """
-        try:
-            np.linalg.cholesky(matrix)
-            return True
-        except np.linalg.LinAlgError:
-            return False
+    Returns:
+        bool: True if the matrix is positive definite, False otherwise.
+    """
+    if matrix.ndim != 2 or matrix.shape[0] != matrix.shape[1]:
+        raise ValueError("Matrix must be square")
+    
+    try:
+        np.linalg.cholesky(matrix)
+        return True
+    except np.linalg.LinAlgError:
+        return False
+
 
 class DiscreteHInfinityFilter:
     def __init__(self, F: np.ndarray, H: np.ndarray, L: np.ndarray, Q: np.ndarray, R: np.ndarray, S: np.ndarray, x0: np.ndarray, P0: np.ndarray, theta: float = 1.0):
@@ -104,7 +108,7 @@ class DiscreteHInfinityFilter:
         """
         return self.x_hat
 
-    def get_precision(self) -> np.ndarray:
+    def get_error_covariance(self) -> np.ndarray:
         """
         Returns the current estimation error covariance.
 
