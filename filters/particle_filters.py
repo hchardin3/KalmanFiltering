@@ -72,7 +72,8 @@ class ParticleFilter:
         }
 
         if resampling_method not in self._resampling_methods:
-            raise(ValueError(f"resampling_method must be in {self.resampling_methods.keys()}"))
+            print(f"WARNING: your value of resampling_method is not supported, as it is not in {self._resampling_methods}\n Regularized will be used by default.")
+            self.resampling_method = "Regularized"
         else:
             self.resampling_method = resampling_method
 
@@ -369,10 +370,10 @@ class ExtendedParticleFilter:
         }
 
         if resampling_method not in self._resampling_methods:
-            raise(ValueError(f"resampling_method must be in {self.resampling_methods.keys()}"))
+            print(f"WARNING: your value of resampling_method is not supported, as it is not in {self._resampling_methods}\n Regularized will be used by default.")
+            self.resampling_method = "Regularized"
         else:
             self.resampling_method = resampling_method
-
     
     def predict(self):
         """
