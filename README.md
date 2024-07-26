@@ -54,19 +54,55 @@ This filters requires more computational resources than the EKF, but is able to 
 
 This script defines two filters. The first one is the classical ParticlewFilter, that creates a set of particles (the number is determined by the user as a trade-off between accuracy and computational cost) that are propagated over periods using the state dynamics and a random distribution that is assumed to represent the uncertainty of the system. The particles' measurements are then computed thanks to the measurement function and another random distribution that is assumed to represent the uncertainty of the measurement. The estimate is then computed to be the weighted average of the particles.
 
-Please note: the random distribution must not necesseraly be gaussian noises. In fact, this filter is the only filter that can handle any type of noise. However, the noises have to use the specific class ProbabilityDensityFunciton defined in stats. 
+Please note: the random distributions must not necesseraly be gaussian noises. In fact, this filter is the only filter that can handle any type of noise. However, the noises have to use the specific class ProbabilityDensityFunciton defined in stats. 
 
 
 A second filter is defined in this script: the ExtendedParticleFilter class, that mixes the dynamics of both the EKF and Particle Filter for enhanced precision. 
 
 ### stats
 
+This folder is used to defined stats tools to be used only in the particle filters.
+
+The main script is probability_density.py, that defines a class object to represent a PDF as a convenient object. The two other scripts, univariate_pdf.py and multivariate_pdf.py, are used to define several classical PDFs, such as gaussian, uniform, and exponential.
+
 ### test
 
-To run a test script, run this command (replace test_script_name by the name of the script without the ending ".py"):
+The test folder contains a test script for each filter I created (except the ones of kalman_filters.py, I was lazy). This served originally for me to test my filters, but feel free to use it as an exemple of how to take advantage of the filters I created. 
+
+To run a test script, go into the directory of the whole project (i.e ~/your_path/KalmanFiltering) and run this command (replace test_script_name by the name of the script without the ending ".py"):
 
     python3 -m test_scripts.test_script_name
 
 ## What filter should I use for my problem?
 
+Great question!
+
+To put it simply, start by enquiring what type of uncertainty you are facing (i.e what type of noise perturbates your system's dynamics and measurement). If it is non-gaussian, a particle filter would be better as you can directly use that noise. However, if you can approximate it by a gaussian, it may be better to enquire if you can use a less-consuming algorithm.
+
+If your system is linear with gaussian noise, the usual Kalman Filter is already optimized to handle it. Using a more advanced filter will produce a result of similar accuracy for a much greater cost.
+
+If it is slightly non-linear, try the EKF.
+
+If it is very non linear, try the UKF.
+
+What you can also do is try several of them and see which one gives the best accuracy. 
+
 ## How do I use it?
+
+Follow the workflow of the corresponding test script.
+
+But basically:
+
+### Start by initializing it 
+
+For this you need to give all the required information about your system. Make sure your arguments have the corresponding shape.
+
+### Update it
+
+For this use the update method, that is common to each filter:
+
+    my_filter.update(*args)
+
+### Store the estimates
+
+On each update, make sure to store the estimate (in a list or an array).
