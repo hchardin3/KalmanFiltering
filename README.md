@@ -99,10 +99,14 @@ For this you need to give all the required information about your system. Make s
 
 ### Update it
 
+On each epoch, update the filter to approximate the new state of the system. 
+
 For this use the update method, that is common to each filter:
 
     my_filter.update(*args)
 
+Make sure to give it all the required arguments (i.e at least the real-world measurement y and eventually the control u (just put in a zero array of the corresponding size if there is no control vector in your system)).
+
 ### Store the estimates
 
-On each update, make sure to store the estimate (in a list or an array).
+On each update, make sure to store the estimate (in a list or an array). You can use the get_estimate() method that is common to each filter. 
