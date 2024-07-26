@@ -3,7 +3,7 @@
 
 ## Summary
 
-The goal of this project was to develop a exhaustive set of filtering tool, principally based on Kalman Filtering theory. The algorithms developed in this project were inspired by the book "Optimal State Estimation" written by Dan Simons, of Cleveland State University. However, I did not put into code each and every algorithms developed in his book, only those I found useful for myself. Maybe I'll change that one day.
+The goal of this project was to develop a exhaustive set of filtering tools, principally based on Kalman Filtering theory. The algorithms developed in this project were inspired by the book "Optimal State Estimation" written by Dan Simons, of Cleveland State University. However, I did not put into code each and every algorithms developed in his book, only those I found useful for myself. Maybe I'll change that one day.
 
 ## Organization of the project
 
