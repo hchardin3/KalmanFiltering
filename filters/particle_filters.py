@@ -71,7 +71,7 @@ class ParticleFilter:
             "Regularized": self.regularized_resampling
         }
 
-        if resampling_method not in self._resampling_methods:
+        if resampling_method not in self._resampling_methods.keys():
             print(f"WARNING: your value of resampling_method is not supported, as it is not in {self._resampling_methods.keys()}\n Regularized will be used by default.")
             self.resampling_method = "Regularized"
         else:
@@ -369,7 +369,7 @@ class ExtendedParticleFilter:
             "Regularized": self.regularized_resampling
         }
 
-        if resampling_method not in self._resampling_methods:
+        if resampling_method not in self._resampling_methods.keys():
             print(f"WARNING: your value of resampling_method is not supported, as it is not in {self._resampling_methods.keys()}\n Regularized will be used by default.")
             self.resampling_method = "Regularized"
         else:
