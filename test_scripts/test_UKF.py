@@ -6,9 +6,8 @@ import matplotlib.pyplot as plt
 def dynamics(state, control_input, t):
     position, velocity = state
     acceleration = control_input
-    dt = t  # assuming t represents the time step in seconds
-    new_position = position + velocity * dt + 0.5 * acceleration * dt**2
-    new_velocity = velocity + acceleration * dt
+    new_position = velocity + np.cos(t)
+    new_velocity = position + control_input
     return np.array([new_position, new_velocity])
 
 # Define the measurement model of the system
@@ -18,9 +17,9 @@ def measurement_model(state, t):
 
 # Test parameters
 initial_state = np.array([0, 0])  # starting at the origin with zero velocity
-initial_covariance = np.eye(2) * 0.1  # small initial uncertainty
-process_noise_cov = np.array([[0.1, 0.01], [0.01, 0.1]])  # position and velocity process noise
-measurement_noise_cov = np.array([[0.1]])  # measurement noise
+initial_covariance = np.eye(2) # small initial uncertainty
+process_noise_cov = np.eye(2) * 10  # position and velocity process noise
+measurement_noise_cov = np.eye(1) * 10  # measurement noise
 control_input = 1.0  # constant acceleration
 dt = 1  # time step in seconds
 num_steps = 300  # number of time steps for the simulation (300 seconds)
@@ -34,7 +33,7 @@ measurements = []
 estimates = [initial_state]
 
 for k in range(1, num_steps + 1):
-    true_state = dynamics(true_states[-1], control_input, dt)
+    true_state = dynamics(true_states[-1], control_input, dt) + np.random.multivariate_normal(np.zeros(2), process_noise_cov)
     true_states.append(true_state)
     
     measurement_noise = np.random.normal(0, np.sqrt(measurement_noise_cov[0,0]))
@@ -56,6 +55,7 @@ print("RMSE for Velocity:", rmse[1])
 # Plotting the results
 plt.figure(figsize=(10, 6))
 plt.plot(range(num_steps + 1), true_states[:, 0], label='True Position', linewidth=2)
+plt.plot(range(num_steps + 1), estimates[:, 0], label='Estimated Position', linewidth=1)
 plt.scatter(range(1, num_steps + 1), [m[0] for m in measurements], color='red', label='Measured Position', alpha=0.6, s=8)
 plt.title('True Position vs Measured Position')
 plt.xlabel('Time (seconds)')

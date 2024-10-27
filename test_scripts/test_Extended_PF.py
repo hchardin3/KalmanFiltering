@@ -17,8 +17,8 @@ def measurement_jacobian(x):
     return np.array([2 * x])
 
 # Noise settings
-process_noise_std = 0.01
-measurement_noise_std = 0.01
+process_noise_std = 10
+measurement_noise_std = .1
 
 # Probability density functions for noise
 dynamics_noise_pdf = UnivariateUniformPDF(lower_bound=-process_noise_std, upper_bound=process_noise_std)
